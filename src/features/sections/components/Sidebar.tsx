@@ -1,6 +1,12 @@
-import type { LngLat, StudyAreaMode } from '@/shared/types/geo';
+import { useMemo } from 'react';
+import type { LngLat, BBox, StudyAreaMode } from '@/shared/types/geo';
+import type { SectionId } from '@/shared/types/metrics';
 import type { ReverseResult } from '@/features/geocoder';
+import { useSectionData } from '@/data/hooks/useSectionData';
+import { originToBbox } from '@/data/cache/bbox-quantize';
+import { getSectionConfig } from '@/config/sections';
 import { LocationBar } from './LocationBar';
+import { SectionShell } from './SectionShell';
 
 type IsochroneStatus = 'idle' | 'fetching' | 'done' | 'error';
 
@@ -38,6 +44,8 @@ const MODES: { value: StudyAreaMode; label: string }[] = [
 
 export function Sidebar({ origin, reverseResult, status, error, mode, onModeChange, customMinutes, onCustomMinutesChange, onClear, geocoder, onGeocoderSelect }: SidebarProps): React.ReactElement {
   const isCustom = customMinutes != null;
+  const bbox = useMemo(() => origin ? originToBbox(origin) : null, [origin]);
+
   return (
     <aside className="fixed top-0 left-0 w-[400px] h-dvh z-50 flex flex-col bg-white border-r-2 border-neutral-900">
       {/* Header */}
@@ -131,13 +139,13 @@ export function Sidebar({ origin, reverseResult, status, error, mode, onModeChan
 
       {/* Scrollable sections */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        {origin ? (
+        {origin && bbox ? (
           <div className="flex flex-col">
-            <SectionPlaceholder title="Overview" description="Key walkability metrics at a glance" />
-            <SectionPlaceholder title="Buildings" description="Morphology, density, and urban grain analysis" />
-            <SectionPlaceholder title="Street Network" description="Connectivity, block sizes, and orientation" />
-            <SectionPlaceholder title="Amenities" description="15-minute city categories and accessibility" />
-            <SectionPlaceholder title="Walkability" description="Composite scores and benchmarks" />
+            <StaticSection title="Overview" description="Key walkability metrics at a glance" />
+            <DataSection sectionId="buildings" bbox={bbox} />
+            <DataSection sectionId="network" bbox={bbox} />
+            <DataSection sectionId="amenities" bbox={bbox} />
+            <StaticSection title="Walkability" description="Composite scores and benchmarks" />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full px-8 text-center">
@@ -165,7 +173,45 @@ export function Sidebar({ origin, reverseResult, status, error, mode, onModeChan
   );
 }
 
-/** Three organic blobs — 5/10/15 min isochrone contours */
+// ─── Data-driven section ────────────────────────────────────
+
+function DataSection({ sectionId, bbox }: { sectionId: SectionId; bbox: BBox }): React.ReactElement {
+  const config = getSectionConfig(sectionId);
+  const { data, state, error, queryMs } = useSectionData(sectionId, bbox);
+
+  if (!config) return <></>;
+
+  return (
+    <SectionShell
+      title={config.name}
+      description={config.description}
+      state={state}
+      error={error}
+      descriptors={config.metrics}
+      data={data as Record<string, unknown> | null}
+      queryMs={queryMs}
+    />
+  );
+}
+
+// ─── Static placeholder section ─────────────────────────────
+
+function StaticSection({ title, description }: { title: string; description: string }): React.ReactElement {
+  return (
+    <SectionShell
+      title={title}
+      description={description}
+      state="idle"
+      error={null}
+      descriptors={[]}
+      data={null}
+      queryMs={null}
+    />
+  );
+}
+
+// ─── Icons ──────────────────────────────────────────────────
+
 function IsochroneIcon(): React.ReactElement {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0">
@@ -179,7 +225,6 @@ function IsochroneIcon(): React.ReactElement {
   );
 }
 
-/** Three concentric circles — 5/10/15 min pedshed rings */
 function PedshedIcon(): React.ReactElement {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0">
@@ -187,28 +232,6 @@ function PedshedIcon(): React.ReactElement {
       <circle cx="8" cy="8" r="4.5" stroke="currentColor" strokeWidth="0.9" strokeDasharray="2.5 1.5" />
       <circle cx="8" cy="8" r="6.8" stroke="currentColor" strokeWidth="0.7" strokeDasharray="2.5 1.5" />
     </svg>
-  );
-}
-
-function SectionPlaceholder({ title, description }: { title: string; description: string }): React.ReactElement {
-  return (
-    <div className="px-6 py-5 border-b border-neutral-200">
-      <h3 className="font-heading text-sm font-bold text-neutral-900 uppercase tracking-tight">{title}</h3>
-      <p className="font-mono text-[10px] text-neutral-400 mt-0.5 uppercase tracking-wider">{description}</p>
-      <div className="grid grid-cols-2 gap-3 mt-4">
-        <SkeletonMetric />
-        <SkeletonMetric />
-      </div>
-    </div>
-  );
-}
-
-function SkeletonMetric(): React.ReactElement {
-  return (
-    <div className="border border-neutral-200 p-4 text-center">
-      <div className="h-6 w-14 bg-neutral-100 mx-auto animate-pulse" />
-      <div className="h-3 w-16 bg-neutral-50 mx-auto mt-2 animate-pulse" />
-    </div>
   );
 }
 

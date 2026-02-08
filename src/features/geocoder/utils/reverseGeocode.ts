@@ -1,52 +1,56 @@
 import type { LngLat } from '@/shared/types/geo';
 
-const PHOTON_REVERSE = 'https://photon.komoot.io/reverse';
+const BIGDATA_REVERSE = 'https://api.bigdatacloud.net/data/reverse-geocode-client';
 
 export interface ReverseResult {
   street: string;
   city: string;
 }
 
-/** Reverse geocode via Photon (OSM-based, free, CORS-friendly, has street names) */
+/** Reverse geocode via BigDataCloud (free, no key, browser-native CORS) */
 export async function reverseGeocode(lngLat: LngLat, signal?: AbortSignal): Promise<ReverseResult | null> {
   try {
     const params = new URLSearchParams({
-      lon: String(lngLat.lng),
-      lat: String(lngLat.lat),
-      limit: '1',
-      lang: 'en',
+      latitude: String(lngLat.lat),
+      longitude: String(lngLat.lng),
+      localityLanguage: 'en',
     });
-    const res = await fetch(`${PHOTON_REVERSE}?${params}`, { signal });
+    const res = await fetch(`${BIGDATA_REVERSE}?${params}`, { signal });
     if (!res.ok) return null;
 
     const data = await res.json() as {
-      features: Array<{
-        properties: {
-          name?: string;
-          street?: string;
-          housenumber?: string;
-          district?: string;
-          city?: string;
-          state?: string;
-          country?: string;
-        };
-      }>;
+      locality?: string;
+      city?: string;
+      principalSubdivision?: string;
+      countryName?: string;
+      localityInfo?: {
+        administrative?: Array<{ name?: string; order?: number }>;
+      };
     };
 
-    const props = data.features[0]?.properties;
-    if (!props) return null;
+    // Extract most specific administrative name (highest order = most local)
+    const admins = data.localityInfo?.administrative ?? [];
+    const sorted = [...admins].sort((a, b) => (b.order ?? 0) - (a.order ?? 0));
+    const mostSpecific = sorted[0]?.name ?? '';
+    const secondMost = sorted[1]?.name ?? '';
 
-    // Street: prefer street + housenumber, fall back to name or district
-    const streetName = props.street
-      ? (props.housenumber ? `${props.street} ${props.housenumber}` : props.street)
-      : (props.name || props.district || '');
+    const locality = data.locality || '';
+    const city = data.city || '';
 
-    const city = props.city || props.state || '';
+    // Street: use the most specific admin name, fall back to locality
+    // If most specific IS the locality/city, try second-most for finer detail
+    const street = (mostSpecific && mostSpecific !== locality && mostSpecific !== city)
+      ? mostSpecific
+      : (secondMost && secondMost !== locality && secondMost !== city)
+        ? secondMost
+        : locality || city || data.principalSubdivision || 'Unknown';
 
-    return {
-      street: streetName || city || 'Unknown',
-      city,
-    };
+    // City: use locality if different from street, else city
+    const displayCity = (locality && locality !== street) ? locality
+      : (city && city !== street) ? city
+      : data.principalSubdivision || '';
+
+    return { street, city: displayCity };
   } catch (err: unknown) {
     if (err instanceof DOMException && err.name === 'AbortError') return null;
     return null;
