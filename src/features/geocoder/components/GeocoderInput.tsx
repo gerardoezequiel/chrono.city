@@ -3,7 +3,7 @@ import { useGeocoder } from '../hooks/useGeocoder';
 import type { LngLat } from '@/shared/types/geo';
 
 interface GeocoderInputProps {
-  onSelect: (lngLat: LngLat) => void;
+  onSelect: (lngLat: LngLat, displayName?: string) => void;
 }
 
 export function GeocoderInput({ onSelect }: GeocoderInputProps): React.ReactElement {
@@ -12,8 +12,8 @@ export function GeocoderInput({ onSelect }: GeocoderInputProps): React.ReactElem
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSelect = useCallback(
-    (lngLat: LngLat) => {
-      onSelect(lngLat);
+    (lngLat: LngLat, displayName: string) => {
+      onSelect(lngLat, displayName);
       clear();
     },
     [onSelect, clear],
@@ -50,7 +50,7 @@ export function GeocoderInput({ onSelect }: GeocoderInputProps): React.ReactElem
     >
       <div className="relative">
         <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none"
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400 pointer-events-none"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -68,22 +68,22 @@ export function GeocoderInput({ onSelect }: GeocoderInputProps): React.ReactElem
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Search city or address…"
-          className="w-full pl-10 pr-4 py-2.5 bg-neutral-900/90 backdrop-blur-sm text-neutral-100 placeholder-neutral-500 rounded-xl border border-neutral-700 focus:border-indigo-500 focus:outline-none text-sm"
+          placeholder="Search city or address..."
+          className="w-full pl-9 pr-4 py-2.5 bg-white text-neutral-900 placeholder-neutral-400 border-2 border-neutral-900 focus:outline-none font-body text-sm"
         />
       </div>
 
       {showDropdown && (
-        <ul className="mt-1 bg-neutral-900/95 backdrop-blur-sm border border-neutral-700 rounded-xl overflow-hidden shadow-lg">
+        <ul className="mt-0 bg-white border-2 border-t-0 border-neutral-900 overflow-hidden">
           {isSearching && results.length === 0 && (
-            <li className="px-4 py-3 text-sm text-neutral-400">Searching…</li>
+            <li className="px-4 py-3 font-mono text-[11px] text-neutral-400 uppercase tracking-wider">Searching...</li>
           )}
           {results.map((result, i) => (
             <li key={`${result.lngLat.lng}-${result.lngLat.lat}-${i}`}>
               <button
                 type="button"
-                onClick={() => handleSelect(result.lngLat)}
-                className="w-full text-left px-4 py-2.5 text-sm text-neutral-200 hover:bg-neutral-800 transition-colors truncate"
+                onClick={() => handleSelect(result.lngLat, result.displayName)}
+                className="w-full text-left px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-900 hover:text-white transition-colors cursor-pointer font-body truncate"
               >
                 {result.displayName}
               </button>

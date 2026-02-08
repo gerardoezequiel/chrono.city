@@ -1,0 +1,18 @@
+[project]
+name = "chrono-notebooks"
+version = "0.1.0"
+description = "Marimo notebooks for chrono.city metric exploration and validation"
+requires-python = ">=3.11"
+dependencies = [
+    "marimo>=0.10.0",
+    "duckdb>=1.1.0",
+    "polars>=1.0.0",
+    "altair>=5.4.0",
+    "numpy>=2.0.0",
+    "scipy>=1.14.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8.0",
+]

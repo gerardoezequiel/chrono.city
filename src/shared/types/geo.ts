@@ -10,4 +10,4 @@ export interface LngLat {
   lat: number;
 }
 
-export type StudyAreaMode = 'ring' | 'isochrone' | 'both';
+export type StudyAreaMode = 'isochrone' | 'ring';

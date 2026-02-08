@@ -1,36 +1,50 @@
 @import "tailwindcss";
-@import "maplibre-gl/dist/maplibre-gl.css";
 
-:root {
-  --bg-primary: #0a0a0f;
-  --bg-surface: #14141f;
-  --bg-elevated: #1e1e2e;
-  --text-primary: #e4e4ef;
-  --text-secondary: #9494a8;
-  --accent: #6366f1;
-  --accent-muted: #4f46e5;
-  --isochrone-fill: rgba(99, 102, 241, 0.2);
-  --isochrone-stroke: rgba(99, 102, 241, 0.8);
+@theme {
+  --font-heading: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+@layer base {
+  :root {
+    --cc-bg-primary: #fafafa;
+    --cc-bg-surface: #ffffff;
+    --cc-bg-elevated: #ffffff;
+    --cc-text-primary: #0a0a0a;
+    --cc-text-secondary: #525252;
+    --cc-accent: #0a0a0a;
+    --cc-accent-muted: #262626;
+    --cc-isochrone-fill: rgba(0, 0, 0, 0.06);
+    --cc-isochrone-stroke: rgba(0, 0, 0, 0.7);
+  }
 
-html,
-body,
-#root {
-  width: 100%;
-  height: 100%;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: system-ui, -apple-system, sans-serif;
-  overflow: hidden;
-}
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
-.maplibregl-map {
-  width: 100%;
-  height: 100%;
+  html,
+  body,
+  #root {
+    width: 100%;
+    height: 100%;
+    background: var(--cc-bg-primary);
+    color: var(--cc-text-primary);
+    font-family: var(--font-body);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .maplibregl-map {
+    width: 100%;
+    height: 100%;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
 }

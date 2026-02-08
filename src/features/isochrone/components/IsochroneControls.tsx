@@ -12,9 +12,8 @@ interface IsochroneControlsProps {
 }
 
 const MODES: { value: StudyAreaMode; label: string }[] = [
-  { value: 'ring', label: 'Ring' },
+  { value: 'ring', label: 'Pedshed' },
   { value: 'isochrone', label: 'Isochrone' },
-  { value: 'both', label: 'Both' },
 ];
 
 export function IsochroneControls({
@@ -26,18 +25,15 @@ export function IsochroneControls({
   onClear,
 }: IsochroneControlsProps): React.ReactElement {
   return (
-    <div className="absolute bottom-6 left-6 z-10 rounded-xl p-4 min-w-56"
-      style={{ background: 'var(--bg-elevated)', border: '1px solid rgba(255,255,255,0.08)' }}
-    >
+    <div className="absolute bottom-6 left-6 z-10 p-4 min-w-56 bg-white border-2 border-neutral-900">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+        <h3 className="font-heading text-sm font-bold uppercase tracking-tight text-neutral-900">
           Study Area
         </h3>
         {origin && (
           <button
             onClick={onClear}
-            className="text-xs px-2 py-1 rounded-md hover:opacity-80 transition-opacity cursor-pointer"
-            style={{ color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)' }}
+            className="font-mono text-[10px] px-2 py-1 text-neutral-500 border border-neutral-300 hover:border-neutral-900 hover:text-neutral-900 transition-colors cursor-pointer uppercase tracking-wider"
           >
             Clear
           </button>
@@ -45,74 +41,36 @@ export function IsochroneControls({
       </div>
 
       {!origin && (
-        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+        <p className="font-mono text-[10px] text-neutral-400 uppercase tracking-wider">
           Click anywhere to set origin
         </p>
       )}
 
       {origin && (
         <>
-          <p className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>
+          <p className="font-mono text-[11px] mb-3 text-neutral-500">
             {origin.lat.toFixed(4)}, {origin.lng.toFixed(4)}
           </p>
 
           {/* Mode toggle */}
-          <div
-            className="flex rounded-lg p-0.5 mb-3"
-            style={{ background: 'rgba(255,255,255,0.06)' }}
-          >
+          <div className="flex mb-3">
             {MODES.map(({ value, label }) => (
               <button
                 key={value}
                 onClick={() => onModeChange(value)}
-                className="flex-1 text-xs py-1.5 rounded-md transition-colors cursor-pointer"
-                style={{
-                  color: mode === value ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  background: mode === value ? 'rgba(99,102,241,0.25)' : 'transparent',
-                }}
+                className={`flex-1 font-heading text-[10px] font-semibold uppercase tracking-wider py-1.5 transition-colors cursor-pointer border-2 ${
+                  mode === value
+                    ? 'bg-neutral-900 text-white border-neutral-900'
+                    : 'bg-white text-neutral-400 border-neutral-200 hover:border-neutral-400'
+                } ${value === 'ring' ? 'border-r-0' : ''}`}
               >
                 {label}
               </button>
             ))}
           </div>
 
-          {/* Legend */}
-          <Legend mode={mode} />
-
           <StatusIndicator status={status} error={error} />
         </>
-      )}
-    </div>
-  );
-}
-
-function Legend({ mode }: { mode: StudyAreaMode }): React.ReactElement {
-  const showRing = mode === 'ring' || mode === 'both';
-  const showIso = mode === 'isochrone' || mode === 'both';
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      {showIso && (
-        <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-          <span className="w-4 border-t" style={{ borderColor: '#6366f1' }} />
-          <span>Isochrone (network)</span>
-        </div>
-      )}
-      {showRing && (
-        <div className="flex gap-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
-          <span className="flex items-center gap-1">
-            <span className="w-3 border-t-2 border-dashed" style={{ borderColor: '#a5b4fc' }} />
-            5m
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 border-t-2 border-dashed" style={{ borderColor: '#818cf8' }} />
-            10m
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 border-t border-dashed" style={{ borderColor: '#6366f1' }} />
-            15m
-          </span>
-        </div>
       )}
     </div>
   );
@@ -129,7 +87,7 @@ function StatusIndicator({
 
   if (status === 'error') {
     return (
-      <p className="text-xs mt-2" style={{ color: '#ef4444' }}>
+      <p className="font-mono text-[11px] mt-2 text-neutral-900">
         {error ?? 'Unknown error'}
       </p>
     );
@@ -137,8 +95,8 @@ function StatusIndicator({
 
   return (
     <div className="flex items-center gap-2 mt-2">
-      <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--accent)' }} />
-      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Loading...</p>
+      <div className="w-2 h-2 bg-neutral-900 animate-pulse" />
+      <p className="font-mono text-[10px] text-neutral-500 uppercase tracking-wider">Loading...</p>
     </div>
   );
 }

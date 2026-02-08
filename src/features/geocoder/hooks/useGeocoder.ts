@@ -6,8 +6,34 @@ export interface GeocoderResult {
   lngLat: LngLat;
 }
 
-const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+const PHOTON_URL = 'https://photon.komoot.io/api';
 const DEBOUNCE_MS = 300;
+
+interface PhotonFeature {
+  geometry: { coordinates: [number, number] };
+  properties: {
+    name?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    street?: string;
+    housenumber?: string;
+    postcode?: string;
+  };
+}
+
+function formatPhotonResult(props: PhotonFeature['properties']): string {
+  const parts: string[] = [];
+  if (props.name) parts.push(props.name);
+  if (props.street) {
+    const street = props.housenumber ? `${props.street} ${props.housenumber}` : props.street;
+    if (street !== props.name) parts.push(street);
+  }
+  if (props.city && props.city !== props.name) parts.push(props.city);
+  if (props.state) parts.push(props.state);
+  if (props.country) parts.push(props.country);
+  return parts.join(', ') || 'Unknown';
+}
 
 interface UseGeocoderReturn {
   query: string;
@@ -49,18 +75,15 @@ export function useGeocoder(): UseGeocoderReturn {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      const url = `${NOMINATIM_URL}?q=${encodeURIComponent(trimmed)}&format=json&limit=5`;
+      const url = `${PHOTON_URL}?q=${encodeURIComponent(trimmed)}&limit=5&lang=en`;
 
-      fetch(url, {
-        signal: controller.signal,
-        headers: { 'User-Agent': 'chrono.city/0.1' },
-      })
+      fetch(url, { signal: controller.signal })
         .then((res) => res.json())
-        .then((data: Array<{ display_name: string; lon: string; lat: string }>) => {
+        .then((data: { features: PhotonFeature[] }) => {
           setResults(
-            data.map((item) => ({
-              displayName: item.display_name,
-              lngLat: { lng: parseFloat(item.lon), lat: parseFloat(item.lat) },
+            data.features.map((f) => ({
+              displayName: formatPhotonResult(f.properties),
+              lngLat: { lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] },
             })),
           );
           setIsSearching(false);

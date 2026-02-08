@@ -32,9 +32,8 @@ export function MapContainer({ onMapReady, onMapClick, is3D = false }: MapContai
       zoom: MAP_DEFAULTS.zoom,
       minZoom: MAP_DEFAULTS.minZoom,
       maxZoom: MAP_DEFAULTS.maxZoom,
+      attributionControl: false,
     });
-
-    map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
     map.on('load', () => {
       onMapReady(map);
@@ -62,11 +61,20 @@ export function MapContainer({ onMapReady, onMapClick, is3D = false }: MapContai
         map.setLayoutProperty('buildings-fill', 'visibility', 'none');
         map.setLayoutProperty('buildings-outline', 'visibility', 'none');
         map.setLayoutProperty('buildings-3d', 'visibility', 'visible');
+        map.setSky({
+          'atmosphere-blend': 0.5,
+          'sky-color': '#e0e0e0',
+          'horizon-color': '#f5f5f5',
+          'fog-color': '#fafafa',
+          'fog-ground-blend': 0.8,
+          'horizon-fog-blend': 0.5,
+        });
         map.easeTo({ pitch: 60, duration: 600 });
       } else {
         map.setLayoutProperty('buildings-fill', 'visibility', 'visible');
         map.setLayoutProperty('buildings-outline', 'visibility', 'visible');
         map.setLayoutProperty('buildings-3d', 'visibility', 'none');
+        map.setSky({ 'atmosphere-blend': 0 });
         map.easeTo({ pitch: 0, duration: 600 });
       }
     };
@@ -88,20 +96,35 @@ function buildStyle(): maplibregl.StyleSpecification {
     version: 8,
     glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
     sources: {
+      carto: {
+        type: 'raster',
+        tiles: ['https://basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}@2x.png'],
+        tileSize: 256,
+        attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      },
+      'carto-labels': {
+        type: 'raster',
+        tiles: ['https://basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}@2x.png'],
+        tileSize: 256,
+      },
       buildings: {
         type: 'vector',
         url: `pmtiles://${PMTILES_URLS.buildings}`,
+        promoteId: 'id',
+        maxzoom: 14,
       },
       transportation: {
         type: 'vector',
         url: `pmtiles://${PMTILES_URLS.transportation}`,
+        maxzoom: 14,
       },
     },
     layers: [
       {
-        id: 'background',
-        type: 'background',
-        paint: { 'background-color': '#0a0a0f' },
+        id: 'carto-basemap',
+        type: 'raster',
+        source: 'carto',
+        paint: { 'raster-opacity': 0.6, 'raster-saturation': -1 },
       },
       {
         id: 'buildings-fill',
@@ -109,8 +132,14 @@ function buildStyle(): maplibregl.StyleSpecification {
         source: 'buildings',
         'source-layer': 'building',
         paint: {
-          'fill-color': '#2d2d52',
-          'fill-opacity': 0.9,
+          'fill-color': ['case',
+            ['boolean', ['feature-state', 'inside'], false], '#737373',
+            '#e5e5e5',
+          ],
+          'fill-opacity': ['case',
+            ['boolean', ['feature-state', 'inside'], false], 0.7,
+            0.6,
+          ],
         },
       },
       {
@@ -118,9 +147,16 @@ function buildStyle(): maplibregl.StyleSpecification {
         type: 'line',
         source: 'buildings',
         'source-layer': 'building',
+        minzoom: 13,
         paint: {
-          'line-color': '#4a4a7a',
-          'line-width': 0.5,
+          'line-color': ['case',
+            ['boolean', ['feature-state', 'inside'], false], '#525252',
+            '#c4c4c4',
+          ],
+          'line-width': ['case',
+            ['boolean', ['feature-state', 'inside'], false], 0.8,
+            0.3,
+          ],
         },
       },
       {
@@ -130,13 +166,10 @@ function buildStyle(): maplibregl.StyleSpecification {
         'source-layer': 'building',
         layout: { visibility: 'none' },
         paint: {
-          'fill-extrusion-color': [
-            'interpolate', ['linear'],
-            ['coalesce', ['get', 'height'], ['*', ['coalesce', ['get', 'num_floors'], 2], 3.5]],
-            0, '#2d2d52',
-            15, '#3d3d6e',
-            40, '#5555a0',
-            100, '#7777cc',
+          'fill-extrusion-color': ['case',
+            ['boolean', ['feature-state', 'inside'], false],
+            '#525252',
+            '#d4d4d4',
           ],
           'fill-extrusion-height': [
             'coalesce',
@@ -144,44 +177,16 @@ function buildStyle(): maplibregl.StyleSpecification {
             ['*', ['coalesce', ['get', 'num_floors'], 2], 3.5],
           ],
           'fill-extrusion-base': 0,
-          'fill-extrusion-opacity': 0.95,
+          'fill-extrusion-opacity': 0.85,
         },
       },
+      // No Overture road layers — CARTO basemap handles street rendering.
+      // Transportation source kept for analytical overlays (isochrone highlighting).
       {
-        id: 'roads',
-        type: 'line',
-        source: 'transportation',
-        'source-layer': 'segment',
-        filter: ['==', ['get', 'subtype'], 'road'],
-        paint: {
-          'line-color': '#3a3a5e',
-          'line-width': [
-            'interpolate', ['linear'], ['zoom'],
-            10, 0.5,
-            14, 1.5,
-            18, 3,
-          ],
-        },
-      },
-      {
-        id: 'roads-major',
-        type: 'line',
-        source: 'transportation',
-        'source-layer': 'segment',
-        filter: [
-          'all',
-          ['==', ['get', 'subtype'], 'road'],
-          ['in', ['get', 'class'], ['literal', ['primary', 'secondary', 'tertiary']]],
-        ],
-        paint: {
-          'line-color': '#5555a0',
-          'line-width': [
-            'interpolate', ['linear'], ['zoom'],
-            10, 1,
-            14, 2.5,
-            18, 5,
-          ],
-        },
+        id: 'carto-labels',
+        type: 'raster',
+        source: 'carto-labels',
+        paint: { 'raster-opacity': 0.7, 'raster-saturation': -1 },
       },
     ],
   };

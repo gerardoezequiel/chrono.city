@@ -47,6 +47,11 @@ export const DEFAULT_WALK_SPEED = 1.11; // m/s (~4 km/h)
 /** Isochrone time presets in minutes */
 export const ISOCHRONE_PRESETS = [5, 10, 15] as const;
 
+/** Walk time slider bounds */
+export const WALK_TIME_MIN = 1;
+export const WALK_TIME_MAX = 20;
+export const WALK_TIME_DEFAULT = 15;
+
 /** Radius in degrees to fetch network graph around origin (~2km) */
 export const GRAPH_FETCH_RADIUS_DEG = 0.02;
 

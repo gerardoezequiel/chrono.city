@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import type { Feature, Polygon } from 'geojson';
 import type { LngLat } from '@/shared/types/geo';
-import { ISOCHRONE_PRESETS } from '@/config/constants';
 
 const VALHALLA_BASE = 'https://valhalla1.openstreetmap.de';
 
@@ -11,7 +10,7 @@ interface UseIsochroneReturn {
   features: Feature<Polygon>[];
   status: IsochroneStatus;
   error: string | null;
-  compute: (origin: LngLat) => Promise<void>;
+  compute: (origin: LngLat, contours: number[]) => Promise<void>;
   clear: () => void;
 }
 
@@ -21,7 +20,7 @@ export function useIsochrone(): UseIsochroneReturn {
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const compute = useCallback(async (origin: LngLat) => {
+  const compute = useCallback(async (origin: LngLat, contours: number[]) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -33,7 +32,7 @@ export function useIsochrone(): UseIsochroneReturn {
       const params = {
         locations: [{ lat: origin.lat, lon: origin.lng }],
         costing: 'pedestrian',
-        contours: ISOCHRONE_PRESETS.map((time) => ({ time })),
+        contours: contours.map((time) => ({ time })),
         polygons: true,
         denoise: 1,
         generalize: 0,
