@@ -1,15 +1,20 @@
 import type { MetricUnit } from '@/shared/types/metrics';
 import { formatMetric } from '@/shared/utils/format';
+import { useCountUp } from '@/shared/hooks/useCountUp';
 
 interface MetricCardProps {
   label: string;
   value: number | null | undefined;
   unit: MetricUnit;
   precision?: number;
+  /** Skip count-up animation (e.g. during drag for instant feedback) */
+  instant?: boolean;
 }
 
-export function MetricCard({ label, value, unit, precision }: MetricCardProps): React.ReactElement {
-  const formatted = formatMetric(value, unit, precision);
+export function MetricCard({ label, value, unit, precision, instant }: MetricCardProps): React.ReactElement {
+  const animated = useCountUp(instant ? null : value);
+  const displayValue = instant ? value : animated;
+  const formatted = formatMetric(displayValue, unit, precision);
 
   return (
     <div className="border border-neutral-200 p-3 text-center">

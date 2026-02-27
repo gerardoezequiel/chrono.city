@@ -169,6 +169,7 @@ export function App(): React.ReactElement {
         onClear={handleClear}
         geocoder={geocoder}
         onGeocoderSelect={handleGeocoderSelect}
+        map={mapRef.current}
       />
 
       <div className="absolute top-0 left-[400px] right-0 bottom-0">
