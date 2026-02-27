@@ -32,6 +32,8 @@ interface IsochroneLayerProps {
   origin: LngLat | null;
   mode: StudyAreaMode;
   contours: number[];
+  /** When true and mode is 'isochrone', show pedshed circles as preview */
+  isDragging?: boolean;
 }
 
 function makeCircle(center: LngLat, radiusM: number, contour: number): Feature<Polygon> {
@@ -329,7 +331,11 @@ function setVis(map: maplibregl.Map, ids: readonly string[], visible: boolean): 
   for (const id of ids) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
 }
 
-export function IsochroneLayer({ map, features, origin, mode, contours }: IsochroneLayerProps): null {
+export function IsochroneLayer({ map, features, origin, mode, contours, isDragging }: IsochroneLayerProps): null {
+  // Effective visual mode: during isochrone drag, show pedshed circles as instant preview
+  const showPedshed = mode === 'ring' || (mode === 'isochrone' && !!isDragging);
+  const showIsochrone = mode === 'isochrone' && !isDragging;
+
   // Init sources + layers on map ready
   useEffect(() => {
     if (!map) return;
@@ -342,14 +348,15 @@ export function IsochroneLayer({ map, features, origin, mode, contours }: Isochr
     }
   }, [map]);
 
-  // Toggle ring/isochrone line visibility
+  // Toggle ring/isochrone line visibility based on drag state
   useEffect(() => {
     if (!map || !ensureLayers(map)) return;
-    setVis(map, PED_LAYERS, mode === 'ring');
-    setVis(map, ISO_LAYERS, mode === 'isochrone');
-  }, [map, mode]);
+    setVis(map, PED_LAYERS, showPedshed);
+    setVis(map, ISO_LAYERS, showIsochrone);
+  }, [map, showPedshed, showIsochrone]);
 
   // Spotlight: mask outside study area
+  // During isochrone drag, use circle geometry for instant mask feedback
   useEffect(() => {
     if (!map || !ensureLayers(map)) return;
     const maskSrc = map.getSource(MASK_SOURCE) as maplibregl.GeoJSONSource | undefined;
@@ -359,11 +366,12 @@ export function IsochroneLayer({ map, features, origin, mode, contours }: Isochr
       return;
     }
 
-    const area = getStudyAreaGeometry(origin, features, mode, contours);
+    const effectiveMode = showPedshed ? 'ring' : mode;
+    const area = getStudyAreaGeometry(origin, features, effectiveMode, contours);
     if (!area) { maskSrc?.setData(EMPTY_FC); return; }
 
     maskSrc?.setData(makeInvertedMask(area));
-  }, [map, mode, features, origin, contours]);
+  }, [map, mode, showPedshed, features, origin, contours]);
 
   // Tag buildings inside study area with feature-state for color switching.
   // Uses queryRenderedFeatures + point-in-polygon on building centroids.
@@ -381,7 +389,8 @@ export function IsochroneLayer({ map, features, origin, mode, contours }: Isochr
 
     if (!origin) { clearStates(); return; }
 
-    const area = getStudyAreaGeometry(origin, features, mode, contours);
+    const effectiveMode = showPedshed ? 'ring' : mode;
+    const area = getStudyAreaGeometry(origin, features, effectiveMode, contours);
     if (!area) { clearStates(); return; }
 
     const ring = area.coordinates[0] as [number, number][];
@@ -416,7 +425,7 @@ export function IsochroneLayer({ map, features, origin, mode, contours }: Isochr
       map.off('moveend', tagBuildings);
       map.off('idle', tagBuildings);
     };
-  }, [map, features, origin, mode, contours]);
+  }, [map, features, origin, mode, showPedshed, contours]);
 
   // Update isochrone data
   useEffect(() => {
@@ -448,8 +457,9 @@ export function IsochroneLayer({ map, features, origin, mode, contours }: Isochr
       const azimuth = 90 + bearing;
 
       let distances: { distM: number; contour: number }[] = [];
+      const effectiveMode = showPedshed ? 'ring' : mode;
 
-      if (mode === 'ring') {
+      if (effectiveMode === 'ring') {
         distances = contours.map((m) => ({ distM: m * WALK_M_PER_MIN, contour: m }));
       } else {
         for (const f of features) {
@@ -473,7 +483,7 @@ export function IsochroneLayer({ map, features, origin, mode, contours }: Isochr
     updateRadius();
     map.on('rotate', updateRadius);
     return () => { map.off('rotate', updateRadius); };
-  }, [map, origin, contours, mode, features]);
+  }, [map, origin, contours, mode, showPedshed, features]);
 
   return null;
 }
