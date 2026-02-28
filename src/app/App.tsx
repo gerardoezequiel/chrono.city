@@ -36,6 +36,7 @@ export function App(): React.ReactElement {
   const [studyAreaMode, setStudyAreaMode] = useState<StudyAreaMode>('ring');
   const [customMinutes, setCustomMinutes] = useState<number | null>(null); // null = presets
   const [is3D, setIs3D] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const reverseAbortRef = useRef<AbortController | null>(null);
 
@@ -75,7 +76,6 @@ export function App(): React.ReactElement {
   // Manage draggable origin marker with mode-specific icon.
   // Uses isDraggingRef to prevent marker recreation during active drag
   // (setOrigin triggers this effect, which would destroy the marker mid-drag).
-  const lastDragRef = useRef(0);
   const isDraggingRef = useRef(false);
   useEffect(() => {
     const map = mapRef.current;
@@ -97,28 +97,27 @@ export function App(): React.ReactElement {
 
       marker.on('dragstart', () => {
         isDraggingRef.current = true;
+        setIsDragging(true);
       });
 
       marker.on('drag', () => {
         const pos = marker.getLngLat();
-        const lngLat = { lng: pos.lng, lat: pos.lat };
-
-        if (studyAreaMode === 'ring') {
-          // Pedshed: instant update — circles + mask + building tagging react to origin
-          setOrigin(lngLat);
-        } else {
-          // Isochrone: throttle Valhalla API calls
-          const now = Date.now();
-          if (now - lastDragRef.current < 300) return;
-          lastDragRef.current = now;
-          compute(lngLat, contours);
-        }
+        // Both modes: update origin every frame for instant visual feedback
+        // Pedshed: circles + mask + buildings react to origin
+        // Isochrone: shows pedshed circle as preview (IsochroneLayer handles this)
+        setOrigin({ lng: pos.lng, lat: pos.lat });
       });
 
       marker.on('dragend', () => {
         isDraggingRef.current = false;
+        setIsDragging(false);
         const pos = marker.getLngLat();
-        setOrigin({ lng: pos.lng, lat: pos.lat });
+        const lngLat = { lng: pos.lng, lat: pos.lat };
+        setOrigin(lngLat);
+        // In isochrone mode, compute the real isochrone on drop
+        if (studyAreaMode === 'isochrone') {
+          compute(lngLat, contours);
+        }
       });
 
       markerRef.current = marker;
@@ -169,6 +168,7 @@ export function App(): React.ReactElement {
         onClear={handleClear}
         geocoder={geocoder}
         onGeocoderSelect={handleGeocoderSelect}
+        map={mapRef.current}
       />
 
       <div className="absolute top-0 left-[400px] right-0 bottom-0">
@@ -179,6 +179,7 @@ export function App(): React.ReactElement {
           origin={origin}
           mode={studyAreaMode}
           contours={contours}
+          isDragging={isDragging}
         />
         <MapControls
           map={mapRef.current}

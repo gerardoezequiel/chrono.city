@@ -1,12 +1,17 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
+import type maplibregl from 'maplibre-gl';
 import type { LngLat, BBox, StudyAreaMode } from '@/shared/types/geo';
 import type { SectionId } from '@/shared/types/metrics';
 import type { ReverseResult } from '@/features/geocoder';
 import { useSectionData } from '@/data/hooks/useSectionData';
 import { originToBbox } from '@/data/cache/bbox-quantize';
 import { getSectionConfig } from '@/config/sections';
+import { SECTION_NARRATIVES } from '@/config/narratives';
 import { LocationBar } from './LocationBar';
 import { SectionShell } from './SectionShell';
+import { ChronoScore } from './ChronoScore';
+import { useScrollSpy } from '../hooks/useScrollSpy';
+import { useMapLayerSync } from '../hooks/useMapLayerSync';
 
 type IsochroneStatus = 'idle' | 'fetching' | 'done' | 'error';
 
@@ -35,6 +40,7 @@ interface SidebarProps {
   onClear: () => void;
   geocoder: GeocoderState;
   onGeocoderSelect: (lngLat: LngLat, displayName: string) => void;
+  map: maplibregl.Map | null;
 }
 
 const MODES: { value: StudyAreaMode; label: string }[] = [
@@ -42,9 +48,14 @@ const MODES: { value: StudyAreaMode; label: string }[] = [
   { value: 'isochrone', label: 'Isochrone' },
 ];
 
-export function Sidebar({ origin, reverseResult, status, error, mode, onModeChange, customMinutes, onCustomMinutesChange, onClear, geocoder, onGeocoderSelect }: SidebarProps): React.ReactElement {
+export function Sidebar({ origin, reverseResult, status, error, mode, onModeChange, customMinutes, onCustomMinutesChange, onClear, geocoder, onGeocoderSelect, map }: SidebarProps): React.ReactElement {
   const isCustom = customMinutes != null;
   const bbox = useMemo(() => origin ? originToBbox(origin) : null, [origin]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const activeSection = useScrollSpy(scrollRef);
+
+  // Sync map layers with scroll position
+  useMapLayerSync(map, activeSection);
 
   return (
     <aside className="fixed top-0 left-0 w-[400px] h-dvh z-50 flex flex-col bg-white border-r-2 border-neutral-900">
@@ -138,14 +149,13 @@ export function Sidebar({ origin, reverseResult, status, error, mode, onModeChan
       </div>
 
       {/* Scrollable sections */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden">
         {origin && bbox ? (
           <div className="flex flex-col">
-            <StaticSection title="Overview" description="Key walkability metrics at a glance" />
+            <OverviewSection />
             <DataSection sectionId="buildings" bbox={bbox} />
             <DataSection sectionId="network" bbox={bbox} />
             <DataSection sectionId="amenities" bbox={bbox} />
-            <StaticSection title="Walkability" description="Composite scores and benchmarks" />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full px-8 text-center">
@@ -173,40 +183,56 @@ export function Sidebar({ origin, reverseResult, status, error, mode, onModeChan
   );
 }
 
-// ─── Data-driven section ────────────────────────────────────
+// ─── Overview section with progressive Chrono Score ──────────
+
+function OverviewSection(): React.ReactElement {
+  const narrative = SECTION_NARRATIVES.overview;
+
+  return (
+    <div data-section-id="overview">
+      <ChronoScore
+        chapters={[
+          { label: 'Fabric', score: null, weight: 0.25 },
+          { label: 'Resilience', score: null, weight: 0.20 },
+          { label: 'Vitality', score: null, weight: 0.30 },
+          { label: 'Connectivity', score: null, weight: 0.25 },
+        ]}
+      />
+      <div className="px-6 pb-3">
+        <p className="font-mono text-[11px] text-neutral-500 leading-relaxed">
+          {narrative.intro}
+        </p>
+        <p className="font-mono text-[10px] text-neutral-400 mt-2 italic leading-relaxed">
+          {narrative.mapHint}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Data-driven section with three-phase reveal ─────────────
 
 function DataSection({ sectionId, bbox }: { sectionId: SectionId; bbox: BBox }): React.ReactElement {
   const config = getSectionConfig(sectionId);
   const { data, state, error, queryMs } = useSectionData(sectionId, bbox);
+  const narrative = SECTION_NARRATIVES[sectionId as keyof typeof SECTION_NARRATIVES];
 
   if (!config) return <></>;
 
   return (
-    <SectionShell
-      title={config.name}
-      description={config.description}
-      state={state}
-      error={error}
-      descriptors={config.metrics}
-      data={data as Record<string, unknown> | null}
-      queryMs={queryMs}
-    />
-  );
-}
-
-// ─── Static placeholder section ─────────────────────────────
-
-function StaticSection({ title, description }: { title: string; description: string }): React.ReactElement {
-  return (
-    <SectionShell
-      title={title}
-      description={description}
-      state="idle"
-      error={null}
-      descriptors={[]}
-      data={null}
-      queryMs={null}
-    />
+    <div data-section-id={sectionId}>
+      <SectionShell
+        title={config.name}
+        description={config.description}
+        state={state}
+        error={error}
+        descriptors={config.metrics}
+        data={data as Record<string, unknown> | null}
+        queryMs={queryMs}
+        narrative={narrative?.intro}
+        mapHint={narrative?.mapHint}
+      />
+    </div>
   );
 }
 

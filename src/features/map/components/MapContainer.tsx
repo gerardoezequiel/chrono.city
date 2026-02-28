@@ -118,6 +118,11 @@ function buildStyle(): maplibregl.StyleSpecification {
         url: `pmtiles://${PMTILES_URLS.transportation}`,
         maxzoom: 14,
       },
+      places: {
+        type: 'vector',
+        url: `pmtiles://${PMTILES_URLS.places}`,
+        maxzoom: 14,
+      },
     },
     layers: [
       {
@@ -180,8 +185,41 @@ function buildStyle(): maplibregl.StyleSpecification {
           'fill-extrusion-opacity': 0.85,
         },
       },
-      // No Overture road layers — CARTO basemap handles street rendering.
-      // Transportation source kept for analytical overlays (isochrone highlighting).
+      // Road network overlay — hidden by default, shown when Street Network section active
+      {
+        id: 'roads-overlay',
+        type: 'line',
+        source: 'transportation',
+        'source-layer': 'segment',
+        filter: ['==', ['get', 'subtype'], 'road'],
+        layout: { visibility: 'none' },
+        paint: {
+          'line-color': '#525252',
+          'line-width': ['match', ['get', 'class'],
+            'motorway', 2.5, 'trunk', 2, 'primary', 1.8,
+            'secondary', 1.4, 'tertiary', 1.1,
+            'residential', 0.8, 'living_street', 0.7,
+            0.5,
+          ],
+          'line-opacity': 0.7,
+        },
+      },
+      // POI dots — hidden by default, shown when Amenities section active
+      {
+        id: 'places-dots',
+        type: 'circle',
+        source: 'places',
+        'source-layer': 'place',
+        minzoom: 13,
+        layout: { visibility: 'none' },
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 2, 16, 4],
+          'circle-color': '#737373',
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 0.5,
+          'circle-opacity': 0.8,
+        },
+      },
       {
         id: 'carto-labels',
         type: 'raster',
