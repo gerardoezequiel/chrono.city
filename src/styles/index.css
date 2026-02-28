@@ -43,6 +43,18 @@
     height: 100%;
   }
 
+  /* Prevent double-tap zoom on interactive elements (mobile) */
+  button, input, [role="button"] {
+    touch-action: manipulation;
+  }
+
+  /* Safe area padding for notched phones */
+  @supports (padding: env(safe-area-inset-bottom)) {
+    .safe-area-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  }
+
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }

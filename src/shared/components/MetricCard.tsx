@@ -21,7 +21,7 @@ export function MetricCard({ label, value, unit, precision, instant }: MetricCar
       <p className="font-mono text-lg font-bold text-neutral-900 tabular-nums tracking-tight">
         {formatted}
       </p>
-      <p className="font-mono text-[9px] text-neutral-400 mt-1 uppercase tracking-widest">
+      <p className="font-mono text-[11px] md:text-[9px] text-neutral-400 mt-1 uppercase tracking-widest">
         {label}
       </p>
     </div>

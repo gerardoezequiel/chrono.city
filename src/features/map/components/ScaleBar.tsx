@@ -3,6 +3,7 @@ import type maplibregl from 'maplibre-gl';
 
 interface ScaleBarProps {
   map: maplibregl.Map | null;
+  isMobile?: boolean;
 }
 
 const STOPS = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000];
@@ -29,7 +30,7 @@ function formatRF(mPerPx: number): string {
   return `1:${rf.toLocaleString()}`;
 }
 
-export function ScaleBar({ map }: ScaleBarProps): React.ReactElement | null {
+export function ScaleBar({ map, isMobile }: ScaleBarProps): React.ReactElement | null {
   const [width, setWidth] = useState(0);
   const [label, setLabel] = useState('');
   const [rf, setRf] = useState('');
@@ -80,8 +81,8 @@ export function ScaleBar({ map }: ScaleBarProps): React.ReactElement | null {
 
   return (
     <>
-      {/* Scale bar — bottom center, brutalist */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none select-none flex flex-col items-center">
+      {/* Scale bar — bottom-left on mobile (avoid sheet overlap), bottom-center on desktop */}
+      <div className={`absolute z-20 pointer-events-none select-none flex flex-col items-center ${isMobile ? 'bottom-24 left-3' : 'bottom-3 left-1/2 -translate-x-1/2'}`}>
         {/* Distance label */}
         <span
           className="font-mono text-[11px] font-black tracking-[0.2em] uppercase"
@@ -92,22 +93,18 @@ export function ScaleBar({ map }: ScaleBarProps): React.ReactElement | null {
 
         {/* Bar with end caps + subticks */}
         <div className="relative" style={{ width, height: 12 }}>
-          {/* Horizontal bar */}
           <div
             className="absolute"
             style={{ left: 0, right: 0, top: 5, height: 2, backgroundColor: '#dc2626', opacity: 0.6 }}
           />
-          {/* Left end cap */}
           <div
             className="absolute left-0"
             style={{ width: 2, height: 12, backgroundColor: '#dc2626', opacity: 0.6 }}
           />
-          {/* Right end cap */}
           <div
             className="absolute right-0"
             style={{ width: 2, height: 12, backgroundColor: '#dc2626', opacity: 0.6 }}
           />
-          {/* Subticks */}
           {subTicks.map((x, i) => (
             <div
               key={i}
@@ -133,19 +130,19 @@ export function ScaleBar({ map }: ScaleBarProps): React.ReactElement | null {
         </span>
       </div>
 
-      {/* Attribution (i) button — bottom right */}
-      <div className="absolute bottom-2 right-2 z-20">
+      {/* Attribution (i) button — bottom right, larger on mobile */}
+      <div className={`absolute z-20 ${isMobile ? 'bottom-24 right-14' : 'bottom-2 right-2'}`}>
         <button
           onClick={() => setShowAttrib((v) => !v)}
-          className="w-5 h-5 flex items-center justify-center rounded-full border-2 border-neutral-900 bg-white text-neutral-900 hover:bg-neutral-900 hover:text-white transition-colors cursor-pointer"
-          style={{ fontSize: 11, fontWeight: 800, fontFamily: 'serif', lineHeight: 1 }}
+          className={`flex items-center justify-center rounded-full border-2 border-neutral-900 bg-white text-neutral-900 hover:bg-neutral-900 hover:text-white active:bg-neutral-900 active:text-white transition-colors cursor-pointer ${isMobile ? 'w-9 h-9' : 'w-5 h-5'}`}
+          style={{ fontSize: isMobile ? 14 : 11, fontWeight: 800, fontFamily: 'serif', lineHeight: 1 }}
           title="Attribution"
         >
           i
         </button>
         {showAttrib && (
-          <div className="absolute bottom-7 right-0 bg-white border-2 border-neutral-900 px-3 py-2 shadow-sm whitespace-nowrap">
-            <p className="font-mono text-[9px] text-neutral-600 leading-relaxed font-semibold tracking-wide">
+          <div className="absolute bottom-10 md:bottom-7 right-0 bg-white border-2 border-neutral-900 px-3 py-2 shadow-sm whitespace-nowrap">
+            <p className="font-mono text-[11px] md:text-[9px] text-neutral-600 leading-relaxed font-semibold tracking-wide">
               &copy; CARTO &copy; OpenStreetMap
               <br />
               Overture Maps Foundation
