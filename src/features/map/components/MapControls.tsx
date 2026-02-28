@@ -44,7 +44,10 @@ export function MapControls({ map, is3D, onToggle3D, onGeolocate, isMobile }: Ma
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lngLat: LngLat = { lng: pos.coords.longitude, lat: pos.coords.latitude };
-        map?.flyTo({ center: [lngLat.lng, lngLat.lat], zoom: 15, duration: 1200 });
+        // On desktop, fly to zoom 15. On mobile, App handles fitBounds via onGeolocate.
+        if (!isMobile) {
+          map?.flyTo({ center: [lngLat.lng, lngLat.lat], zoom: 15, duration: 1200 });
+        }
         onGeolocate(lngLat);
         setIsLocating(false);
       },

@@ -10,6 +10,10 @@ import { ISOCHRONE_PRESETS } from '@/config/constants';
 import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { MobileSheet } from '@/shared/components/MobileSheet';
 
+// ~83m/min walking speed, same as IsochroneLayer
+const WALK_M_PER_MIN = 83.33;
+const DEG_PER_METER = 1 / 111_139;
+
 const ISOCHRONE_SVG = `<svg width="22" height="22" viewBox="0 0 16 16" fill="none">
   <path d="M8 5.5C7 5.3 6 6 5.8 7C5.6 8 6.3 8.8 7 9.3C7.7 9.8 8.5 10 9.2 9.5C10 9 10.5 8 10.3 7C10.1 6 9 5.7 8 5.5Z" stroke="currentColor" stroke-width="1.2"/>
   <path d="M8 3.5C5.8 3.2 3.8 4.5 3.4 6.5C3 8.5 4 10 5.3 11C6.5 12 8.2 12.5 9.8 11.5C11.3 10.5 12.5 8.8 12.2 6.8C11.9 4.8 10.2 3.8 8 3.5Z" stroke="currentColor" stroke-width="0.9"/>
@@ -33,6 +37,7 @@ export function App(): React.ReactElement {
   const { mapRef, onMapReady } = useMap();
   const { features, status, error, compute, clear } = useIsochrone();
   const geocoder = useGeocoder();
+  const isMobile = useIsMobile();
   const [origin, setOrigin] = useState<LngLat | null>(null);
   const [reverseResult, setReverseResult] = useState<ReverseResult | null>(null);
   const [studyAreaMode, setStudyAreaMode] = useState<StudyAreaMode>('ring');
@@ -48,10 +53,26 @@ export function App(): React.ReactElement {
     [customMinutes],
   );
 
+  // On mobile, fit map to show the full study area (outermost contour)
+  const fitToStudyArea = useCallback((lngLat: LngLat) => {
+    const map = mapRef.current;
+    if (!map || !isMobile) return;
+    const maxMin = Math.max(...contours);
+    const radiusM = maxMin * WALK_M_PER_MIN;
+    const dLat = radiusM * DEG_PER_METER;
+    const dLng = dLat / Math.cos(lngLat.lat * Math.PI / 180);
+    // Pad: bottom 100px for collapsed sheet, top/sides 20px
+    map.fitBounds(
+      [[lngLat.lng - dLng, lngLat.lat - dLat], [lngLat.lng + dLng, lngLat.lat + dLat]],
+      { padding: { top: 20, left: 20, right: 20, bottom: 100 }, duration: 800, maxZoom: 16 },
+    );
+  }, [mapRef, isMobile, contours]);
+
   const handleMapClick = useCallback((lngLat: LngLat) => {
     setOrigin(lngLat);
     setReverseResult(null);
-  }, []);
+    fitToStudyArea(lngLat);
+  }, [fitToStudyArea]);
 
   // Reverse geocode when origin changes
   useEffect(() => {
@@ -144,8 +165,12 @@ export function App(): React.ReactElement {
       street: parts[0] ?? '',
       city: parts[1] ?? '',
     });
-    mapRef.current?.flyTo({ center: [lngLat.lng, lngLat.lat], zoom: 15 });
-  }, [mapRef]);
+    if (isMobile) {
+      fitToStudyArea(lngLat);
+    } else {
+      mapRef.current?.flyTo({ center: [lngLat.lng, lngLat.lat], zoom: 15 });
+    }
+  }, [mapRef, isMobile, fitToStudyArea]);
 
   const handleCustomMinutesChange = useCallback((value: number | null) => {
     setCustomMinutes(value);
@@ -154,9 +179,8 @@ export function App(): React.ReactElement {
   const handleGeolocate = useCallback((lngLat: LngLat) => {
     setOrigin(lngLat);
     setReverseResult(null);
-  }, []);
-
-  const isMobile = useIsMobile();
+    fitToStudyArea(lngLat);
+  }, [fitToStudyArea]);
 
   const sidebarEl = (
     <Sidebar
