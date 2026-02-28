@@ -7,6 +7,8 @@
  * Each normalization spec includes the reference paper that
  * justifies the chosen range — this is what makes the framework
  * defensible to researchers and credible to city councils.
+ *
+ * 7 chapters × 5–8 indicators each = 40+ normalization specs.
  */
 
 import type { NormalizationCurve, NormalizationSpec } from './types';
@@ -65,7 +67,7 @@ export function normalize(value: number | null, curve: NormalizationCurve): numb
   }
 }
 
-// ─── Fabric Normalization Specs ──────────────────────────────
+// ─── Chapter 1: Fabric Normalization Specs ───────────────────
 
 export const FABRIC_NORMS: NormalizationSpec[] = [
   {
@@ -107,9 +109,16 @@ export const FABRIC_NORMS: NormalizationSpec[] = [
     reference: 'Batty & Longley (1994) — Fractal Cities: mature cities 1.4–1.7',
     interpretation: 'Higher complexity indicates organic, evolved urban form',
   },
+  {
+    key: 'buildingAge',
+    label: 'Building Heritage',
+    curve: { type: 'linear', min: 1950, max: 2025, invert: true },
+    reference: 'Jacobs (1961) — Old buildings, new ideas: age diversity supports mixed use',
+    interpretation: 'Older building stock indicates established, layered neighborhoods',
+  },
 ];
 
-// ─── Resilience Normalization Specs ──────────────────────────
+// ─── Chapter 2: Resilience Normalization Specs ───────────────
 
 export const RESILIENCE_NORMS: NormalizationSpec[] = [
   {
@@ -147,9 +156,23 @@ export const RESILIENCE_NORMS: NormalizationSpec[] = [
     reference: 'Kontur Nighttime Heatwave Risk — tropical nights threshold 25°C',
     interpretation: 'Fewer hot nights means better sleep quality and health outcomes',
   },
+  {
+    key: 'ndvi',
+    label: 'Vegetation Health',
+    curve: { type: 'linear', min: 0.1, max: 0.7 },
+    reference: 'Tucker (1979) — NDVI as proxy for vegetation vigor and ecosystem health',
+    interpretation: 'High NDVI indicates lush, healthy vegetation providing ecosystem services',
+  },
+  {
+    key: 'canopyHeight',
+    label: 'Tree Maturity',
+    curve: { type: 'logarithmic', min: 2, max: 25 },
+    reference: 'Nowak & Greenfield (2018) — Mature trees provide 70x more services than saplings',
+    interpretation: 'Tall, mature trees provide far more cooling and air quality benefits',
+  },
 ];
 
-// ─── Vitality Normalization Specs ────────────────────────────
+// ─── Chapter 3: Vitality Normalization Specs ─────────────────
 
 export const VITALITY_NORMS: NormalizationSpec[] = [
   {
@@ -157,10 +180,10 @@ export const VITALITY_NORMS: NormalizationSpec[] = [
     label: '15-Min Completeness',
     curve: {
       type: 'threshold',
-      thresholds: [0, 1, 2, 3, 4, 5, 6],
-      scores: [0, 17, 33, 50, 67, 83, 100],
+      thresholds: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+      scores: [0, 13, 25, 38, 50, 63, 75, 88, 100],
     },
-    reference: 'Moreno et al. (2021) — 6 essential categories for 15-minute city',
+    reference: 'Moreno et al. (2021) — 8 essential categories for complete 15-minute city',
     interpretation: 'All daily needs accessible on foot within 15 minutes',
   },
   {
@@ -191,9 +214,23 @@ export const VITALITY_NORMS: NormalizationSpec[] = [
     reference: 'Ewing & Cervero (2010) — D-variables for walkable neighborhoods',
     interpretation: 'Pharmacy, grocery, school, transit all within walking distance',
   },
+  {
+    key: 'healthcareAccess',
+    label: 'Healthcare Access',
+    curve: { type: 'logarithmic', min: 0.1, max: 5 },
+    reference: 'WHO (2010) — Healthcare facility density minimum standards',
+    interpretation: 'Nearby hospitals and clinics ensure emergency and routine care access',
+  },
+  {
+    key: 'leisureDensity',
+    label: 'Leisure & Recreation',
+    curve: { type: 'logarithmic', min: 0.2, max: 10 },
+    reference: 'Gehl (2010) — Cities for People: recreation as social infrastructure',
+    interpretation: 'Sports, arts, and entertainment venues support quality of life',
+  },
 ];
 
-// ─── Connectivity Normalization Specs ────────────────────────
+// ─── Chapter 4: Connectivity Normalization Specs ─────────────
 
 export const CONNECTIVITY_NORMS: NormalizationSpec[] = [
   {
@@ -233,6 +270,158 @@ export const CONNECTIVITY_NORMS: NormalizationSpec[] = [
   },
 ];
 
+// ─── Chapter 5: Prosperity Normalization Specs ───────────────
+
+export const PROSPERITY_NORMS: NormalizationSpec[] = [
+  {
+    key: 'gdpPopulation',
+    label: 'Spending Power',
+    curve: { type: 'logarithmic', min: 10000, max: 10000000 },
+    reference: 'World Bank GDP per capita × population density as local market size',
+    interpretation: 'Higher spending power indicates viable commercial markets',
+  },
+  {
+    key: 'nightLightsEconomic',
+    label: 'Economic Activity',
+    curve: { type: 'logarithmic', min: 1, max: 60 },
+    reference: 'Henderson et al. (2012) — Night lights as GDP proxy, Nature',
+    interpretation: 'Brighter lights correlate with higher economic output',
+  },
+  {
+    key: 'hotelDensity',
+    label: 'Visitor Economy',
+    curve: { type: 'logarithmic', min: 0.1, max: 10 },
+    reference: 'UNWTO Tourism Indicators — hotel density reflects visitor flows',
+    interpretation: 'Hotel presence signals tourism and business travel activity',
+  },
+  {
+    key: 'financialInfra',
+    label: 'Financial Access',
+    curve: { type: 'logarithmic', min: 0.1, max: 5 },
+    reference: 'World Bank Financial Inclusion — ATM/bank density per km²',
+    interpretation: 'Financial infrastructure availability supports commercial activity',
+  },
+  {
+    key: 'businessServicesDensity',
+    label: 'Employment Centers',
+    curve: { type: 'logarithmic', min: 0.5, max: 20 },
+    reference: 'Foursquare Places — business POI density correlates with employment',
+    interpretation: 'More business services indicate local employment opportunities',
+  },
+  {
+    key: 'retailDensity',
+    label: 'Commercial Density',
+    curve: { type: 'logarithmic', min: 0.5, max: 30 },
+    reference: 'Dolega & Celinska-Janowicz (2019) — Retail vitality and urban health',
+    interpretation: 'Active retail landscape signals economic health',
+  },
+];
+
+// ─── Chapter 6: Environment Normalization Specs ──────────────
+
+export const ENVIRONMENT_NORMS: NormalizationSpec[] = [
+  {
+    key: 'informRiskIndex',
+    label: 'Humanitarian Risk',
+    curve: { type: 'linear', min: 0, max: 8, invert: true },
+    reference: 'INFORM Risk Index (EU JRC) — composite humanitarian risk 0–10',
+    interpretation: 'Lower risk means safer, more stable conditions',
+  },
+  {
+    key: 'hotDaysPlus2C',
+    label: 'Future Heat Stress',
+    curve: { type: 'sigmoid', midpoint: 90, steepness: 0.03, invert: true },
+    reference: 'Kontur Climate — days >32°C at +2°C warming scenario',
+    interpretation: 'Fewer extreme heat days means better outdoor livability',
+  },
+  {
+    key: 'hotNightsPlus1C',
+    label: 'Tropical Nights',
+    curve: { type: 'sigmoid', midpoint: 60, steepness: 0.05, invert: true },
+    reference: 'Royé (2017) — Tropical nights disrupt sleep and raise mortality',
+    interpretation: 'Fewer tropical nights means better recovery and health',
+  },
+  {
+    key: 'wetBulbDaysPlus2C',
+    label: 'Lethal Heat Threshold',
+    curve: { type: 'sigmoid', midpoint: 15, steepness: 0.15, invert: true },
+    reference: 'Raymond et al. (2020) — Wet-bulb >35°C is unsurvivable, Science Advances',
+    interpretation: 'Any wet-bulb days above 32°C represent extreme danger',
+  },
+  {
+    key: 'disasterFrequency',
+    label: 'Disaster Exposure',
+    curve: { type: 'sigmoid', midpoint: 30, steepness: 0.05, invert: true },
+    reference: 'EM-DAT International Disaster Database frequency thresholds',
+    interpretation: 'Fewer hazardous days means lower natural disaster exposure',
+  },
+  {
+    key: 'waterScarcity',
+    label: 'Water Security',
+    curve: { type: 'linear', min: 0, max: 7, invert: true },
+    reference: 'INFORM Water Scarcity sub-index (0–10)',
+    interpretation: 'Lower scarcity risk means more reliable water supply',
+  },
+  {
+    key: 'solarPotential',
+    label: 'Renewable Energy',
+    curve: { type: 'linear', min: 0.2, max: 0.9 },
+    reference: 'Kontur Solar Suitability — multi-criteria analysis for solar farms',
+    interpretation: 'Higher suitability means better renewable energy transition potential',
+  },
+];
+
+// ─── Chapter 7: Culture Normalization Specs ──────────────────
+
+export const CULTURE_NORMS: NormalizationSpec[] = [
+  {
+    key: 'culturalVenueDensity',
+    label: 'Cultural Venues',
+    curve: { type: 'logarithmic', min: 0.1, max: 8 },
+    reference: 'UNESCO Creative Cities — cultural venue density as cultural capital metric',
+    interpretation: 'More cultural venues per area means richer cultural life',
+  },
+  {
+    key: 'heritageDensity',
+    label: 'Heritage Presence',
+    curve: { type: 'logarithmic', min: 0.05, max: 5 },
+    reference: 'ICOMOS — Heritage site density reflects historic significance',
+    interpretation: 'Heritage sites represent irreplaceable cultural and historical value',
+  },
+  {
+    key: 'heritageProtection',
+    label: 'Heritage Protection',
+    curve: {
+      type: 'threshold',
+      thresholds: [0, 1, 2, 3, 4],
+      scores: [0, 25, 50, 75, 100],
+    },
+    reference: 'UNESCO/national heritage designation levels (local → national → world)',
+    interpretation: 'Higher protection level means stronger cultural preservation commitment',
+  },
+  {
+    key: 'entertainmentDensity',
+    label: 'Entertainment & Events',
+    curve: { type: 'logarithmic', min: 0.2, max: 10 },
+    reference: 'Florida (2002) — Creative Class: entertainment density as city vitality proxy',
+    interpretation: 'Entertainment venues support night economy and cultural vibrancy',
+  },
+  {
+    key: 'knowledgeInfra',
+    label: 'Knowledge Infrastructure',
+    curve: { type: 'logarithmic', min: 0.05, max: 3 },
+    reference: 'Glaeser (2011) — Universities as engines of urban innovation',
+    interpretation: 'Universities and colleges drive knowledge economy and innovation',
+  },
+  {
+    key: 'culturalDiversity',
+    label: 'Cultural Mix',
+    curve: { type: 'linear', min: 0.2, max: 0.85 },
+    reference: 'Shannon entropy of cultural venue types — diversity of cultural offer',
+    interpretation: 'Diverse cultural types (art, music, theater, heritage) serve more people',
+  },
+];
+
 // ─── Aggregate Export ────────────────────────────────────────
 
 export const ALL_NORMS = {
@@ -240,4 +429,7 @@ export const ALL_NORMS = {
   resilience: RESILIENCE_NORMS,
   vitality: VITALITY_NORMS,
   connectivity: CONNECTIVITY_NORMS,
+  prosperity: PROSPERITY_NORMS,
+  environment: ENVIRONMENT_NORMS,
+  culture: CULTURE_NORMS,
 } as const;

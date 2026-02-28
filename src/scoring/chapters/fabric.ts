@@ -13,6 +13,7 @@
  *   Alexander (1977) — A Pattern Language: urban grain
  *   Fleischmann et al. (2021) — Morphometric analysis
  *   Batty & Longley (1994) — Fractal Cities
+ *   Jacobs (1961) — The Death and Life of Great American Cities
  */
 
 import type { FabricIndicators, ChapterScore, ChapterWeight } from '../types';
@@ -23,9 +24,10 @@ import { computeGrade, weightedAverage, summarizeFabric } from '../utils';
 const WEIGHTS: ChapterWeight[] = [
   { indicatorKey: 'gsi', weight: 0.25, rationale: 'Ground coverage is the primary density measure in Spacematrix' },
   { indicatorKey: 'urbanGrain', weight: 0.25, rationale: 'Fine grain is the strongest predictor of walkable neighborhoods' },
-  { indicatorKey: 'compactness', weight: 0.25, rationale: 'Energy-efficient form reduces environmental impact' },
-  { indicatorKey: 'fractalDimension', weight: 0.15, rationale: 'Complexity indicates evolved, mature urban form' },
+  { indicatorKey: 'compactness', weight: 0.20, rationale: 'Energy-efficient form reduces environmental impact' },
+  { indicatorKey: 'fractalDimension', weight: 0.10, rationale: 'Complexity indicates evolved, mature urban form' },
   { indicatorKey: 'fsi', weight: 0.10, rationale: 'Intensity supports diversity but weighs less than ground form' },
+  { indicatorKey: 'buildingAge', weight: 0.10, rationale: 'Building age diversity supports mixed use and character' },
 ];
 
 export function scoreFabric(indicators: FabricIndicators): ChapterScore {
@@ -40,18 +42,27 @@ export function scoreFabric(indicators: FabricIndicators): ChapterScore {
     compactness: norm('compactness', indicators.compactness),
     urbanGrain: norm('urbanGrain', indicators.urbanGrain),
     fractalDimension: norm('fractalDimension', indicators.fractalDimension),
+    buildingAge: norm('buildingAge', indicators.earliestConstructionYear),
   };
 
   // Confidence: penalize if we're missing height data (needed for FSI)
   let confidence = 1.0;
   if (indicators.heightCoverage < 0.3) {
-    confidence *= 0.7; // FSI estimate is unreliable
-    // Fall back: weight GSI and grain more heavily
+    confidence *= 0.7;
     components['fsi'] = (components['fsi'] ?? 0) * indicators.heightCoverage / 0.3;
   }
   if (indicators.fractalDimension == null) {
-    confidence *= 0.9; // Missing fractal dimension
-    components['fractalDimension'] = 50; // Neutral default
+    confidence *= 0.9;
+    components['fractalDimension'] = 50;
+  }
+  if (indicators.earliestConstructionYear == null) {
+    confidence *= 0.95;
+    components['buildingAge'] = 50;
+  }
+
+  // Boost confidence if we have recent OSM mapping activity
+  if (indicators.recentOsmBuildings != null && indicators.recentOsmBuildings > 10) {
+    confidence = Math.min(confidence * 1.05, 1.0);
   }
 
   const score = weightedAverage(components, WEIGHTS);

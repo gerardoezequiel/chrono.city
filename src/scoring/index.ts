@@ -1,5 +1,5 @@
 /**
- * Chrono Urban Scoring Framework
+ * Chrono Urban Scoring Framework — 7-Chapter Edition
  *
  * Public API:
  *   scoreH3Cell(props, h3Index)    → ChronoScore from Kontur H3 data
@@ -8,8 +8,14 @@
  *   scoreBbox(indicators, ...)     → ChronoScore from any bounding box
  *   computeChronoScore(raw, ctx)   → Low-level: raw indicators → score
  *
- * The framework is input-agnostic: Kontur tiles and Overture queries
- * both feed the same scoring engine. Same methodology, same output.
+ * 7 Chapters:
+ *   1. Fabric       — Urban morphology (GSI, FSI, grain, age)
+ *   2. Resilience    — Green, mixed, permeable (NDVI, canopy height)
+ *   3. Vitality      — 15-min city (8 categories, healthcare, leisure)
+ *   4. Connectivity  — Network walkability (intersections, dead ends)
+ *   5. Prosperity    — Economic vibrancy (GDP, night lights, hotels)
+ *   6. Environment   — Climate & disaster risk (INFORM, heat, wet-bulb)
+ *   7. Culture       — Cultural capital (heritage, arts, knowledge)
  */
 
 // Pipeline (main entry points)
@@ -23,6 +29,9 @@ export { scoreFabric } from './chapters/fabric';
 export { scoreResilience } from './chapters/resilience';
 export { scoreVitality } from './chapters/vitality';
 export { scoreConnectivity } from './chapters/connectivity';
+export { scoreProsperity } from './chapters/prosperity';
+export { scoreEnvironment } from './chapters/environment';
+export { scoreCulture } from './chapters/culture';
 
 // Normalization engine
 export { normalize, ALL_NORMS } from './normalize';
@@ -44,6 +53,9 @@ export type {
   ResilienceIndicators,
   VitalityIndicators,
   ConnectivityIndicators,
+  ProsperityIndicators,
+  EnvironmentIndicators,
+  CultureIndicators,
   KonturH3Properties,
   ScoredH3Cell,
   ScoringContext,

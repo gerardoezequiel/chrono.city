@@ -2,7 +2,7 @@
  * Scoring Utilities
  *
  * Grade computation, weighted averaging, and plain-language
- * summary generation for different audiences.
+ * summary generation for all 7 chapters.
  */
 
 import type {
@@ -12,6 +12,9 @@ import type {
   ResilienceIndicators,
   VitalityIndicators,
   ConnectivityIndicators,
+  ProsperityIndicators,
+  EnvironmentIndicators,
+  CultureIndicators,
 } from './types';
 
 // ─── Grade Computation ───────────────────────────────────────
@@ -56,8 +59,6 @@ export function weightedAverage(
 }
 
 // ─── Plain-Language Summaries ────────────────────────────────
-// These generate council-friendly descriptions of what the score means.
-// The tone is factual and actionable, not promotional.
 
 export function summarizeFabric(score: number, ind: FabricIndicators): string {
   const parts: string[] = [];
@@ -86,6 +87,10 @@ export function summarizeFabric(score: number, ind: FabricIndicators): string {
     }
   }
 
+  if (ind.earliestConstructionYear != null && ind.earliestConstructionYear < 1900) {
+    parts.push('historic building stock');
+  }
+
   return `${parts.join(', ')}. ${scoreContext('Urban Fabric', score)}`;
 }
 
@@ -110,13 +115,21 @@ export function summarizeResilience(score: number, ind: ResilienceIndicators): s
     parts.push('high flood risk from sealed surfaces');
   }
 
+  if (ind.ndvi != null && ind.ndvi > 0.5) {
+    parts.push('healthy vegetation');
+  }
+
+  if (ind.canopyHeight != null && ind.canopyHeight > 15) {
+    parts.push('mature tree canopy');
+  }
+
   return `${parts.join(', ')}. ${scoreContext('Resilience', score)}`;
 }
 
 export function summarizeVitality(score: number, ind: VitalityIndicators): string {
   const parts: string[] = [];
 
-  parts.push(`${ind.fifteenMinCompleteness}/6 essential service categories`);
+  parts.push(`${ind.fifteenMinCompleteness}/8 essential service categories`);
 
   if (ind.socialDensity > 5) {
     parts.push('rich social infrastructure');
@@ -126,6 +139,14 @@ export function summarizeVitality(score: number, ind: VitalityIndicators): strin
 
   if (ind.freshFoodAccess > 500) {
     parts.push(`nearest grocery ${ind.freshFoodAccess.toFixed(0)}m away (food access risk)`);
+  }
+
+  if (ind.hospitalCount != null && ind.hospitalCount > 0) {
+    parts.push('healthcare accessible');
+  }
+
+  if ((ind.sportsRecreationPoi ?? 0) + (ind.artsEntertainmentPoi ?? 0) > 5) {
+    parts.push('diverse leisure options');
   }
 
   return `${parts.join(', ')}. ${scoreContext('Vitality', score)}`;
@@ -153,6 +174,120 @@ export function summarizeConnectivity(score: number, ind: ConnectivityIndicators
   }
 
   return `${parts.join(', ')}. ${scoreContext('Connectivity', score)}`;
+}
+
+export function summarizeProsperity(score: number, ind: ProsperityIndicators): string {
+  const parts: string[] = [];
+
+  if (ind.gdpPopulation != null && ind.gdpPopulation > 1000000) {
+    parts.push('Strong local spending power');
+  } else if (ind.gdpPopulation != null && ind.gdpPopulation < 100000) {
+    parts.push('Low economic output');
+  }
+
+  if (ind.nightLightsEconomic != null && ind.nightLightsEconomic > 30) {
+    parts.push('high economic activity (bright night lights)');
+  }
+
+  if ((ind.hotelCount ?? 0) > 3) {
+    parts.push('active visitor economy');
+  }
+
+  const financialCount = (ind.atmCount ?? 0) + (ind.bankCount ?? 0);
+  if (financialCount > 5) {
+    parts.push('well-served by financial infrastructure');
+  } else if (financialCount === 0 && ind.gdpPopulation != null) {
+    parts.push('no financial services nearby');
+  }
+
+  if ((ind.businessServicesPoi ?? 0) > 10) {
+    parts.push('employment center');
+  }
+
+  if (parts.length === 0) {
+    parts.push('Limited economic data available');
+  }
+
+  return `${parts.join(', ')}. ${scoreContext('Prosperity', score)}`;
+}
+
+export function summarizeEnvironment(score: number, ind: EnvironmentIndicators): string {
+  const parts: string[] = [];
+
+  if (ind.informRiskIndex != null) {
+    if (ind.informRiskIndex > 6) {
+      parts.push(`High humanitarian risk (INFORM ${ind.informRiskIndex.toFixed(1)}/10)`);
+    } else if (ind.informRiskIndex < 3) {
+      parts.push(`Low humanitarian risk (INFORM ${ind.informRiskIndex.toFixed(1)}/10)`);
+    } else {
+      parts.push(`Moderate risk (INFORM ${ind.informRiskIndex.toFixed(1)}/10)`);
+    }
+  }
+
+  if (ind.hotDaysPlus2C != null && ind.hotDaysPlus2C > 60) {
+    parts.push(`${ind.hotDaysPlus2C.toFixed(0)} extreme heat days projected at +2°C`);
+  }
+
+  if (ind.wetBulbDaysPlus2C != null && ind.wetBulbDaysPlus2C > 5) {
+    parts.push(`${ind.wetBulbDaysPlus2C.toFixed(0)} lethal wet-bulb days projected`);
+  }
+
+  if (ind.waterScarcity != null && ind.waterScarcity > 5) {
+    parts.push('significant water scarcity risk');
+  }
+
+  const disasterDays =
+    (ind.floodDaysCount ?? 0) + (ind.cycloneDaysCount ?? 0) +
+    (ind.droughtDaysCount ?? 0) + (ind.wildfireDaysCount ?? 0);
+  if (disasterDays > 30) {
+    parts.push(`${disasterDays} hazardous days/year`);
+  }
+
+  if (ind.solarSuitability != null && ind.solarSuitability > 0.7) {
+    parts.push('excellent solar energy potential');
+  }
+
+  if (parts.length === 0) {
+    parts.push('Limited environmental risk data available');
+  }
+
+  return `${parts.join(', ')}. ${scoreContext('Environment', score)}`;
+}
+
+export function summarizeCulture(score: number, ind: CultureIndicators): string {
+  const parts: string[] = [];
+
+  const totalVenues =
+    (ind.artVenues ?? 0) + (ind.museumsHistorical ?? 0) + (ind.culturalCenters ?? 0);
+
+  if (totalVenues > 5) {
+    parts.push('Rich cultural infrastructure');
+  } else if (totalVenues > 0) {
+    parts.push(`${totalVenues} cultural venue(s)`);
+  } else {
+    parts.push('No mapped cultural venues');
+  }
+
+  if ((ind.heritageSites ?? 0) > 0) {
+    parts.push(`${ind.heritageSites} heritage site(s)`);
+  }
+
+  if (ind.heritageProtectionLevel != null && ind.heritageProtectionLevel >= 3) {
+    parts.push('nationally recognized heritage area');
+  }
+
+  const entertainment =
+    (ind.entertainmentVenues ?? 0) + (ind.artsEntertainmentFsq ?? 0);
+  if (entertainment > 5) {
+    parts.push('active entertainment scene');
+  }
+
+  const knowledge = (ind.universityCount ?? 0) + (ind.collegeCount ?? 0);
+  if (knowledge > 0) {
+    parts.push('knowledge/academic presence');
+  }
+
+  return `${parts.join(', ')}. ${scoreContext('Culture', score)}`;
 }
 
 function scoreContext(chapter: string, score: number): string {

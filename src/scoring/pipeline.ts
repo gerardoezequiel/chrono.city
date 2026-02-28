@@ -1,7 +1,7 @@
 /**
  * Scoring Pipeline Orchestrator
  *
- * Two modes of operation:
+ * Three modes of operation:
  *
  * 1. scoreH3Cell(konturProps) — Score a single H3 cell from Kontur data
  *    Used by: MapLibre feature click, batch processing, API
@@ -9,7 +9,9 @@
  * 2. scorePedshed(overtureIndicators, context) — Score a pedshed from DuckDB
  *    Used by: Browser walkability analysis after isochrone computation
  *
- * Both modes produce the same ChronoScore output, making the
+ * 3. scoreBbox(indicators, bbox, area) — Score a bounding box from any source
+ *
+ * All modes produce the same ChronoScore output, making the
  * framework input-agnostic. Same scoring engine, different data sources.
  */
 
@@ -104,21 +106,39 @@ function chronoScoreToFlatRow(
   props: KonturH3Properties,
 ): ScoredH3Cell {
   const ctx = score.context;
+
+  // Cultural POI aggregate
+  const culturalPois =
+    (props.osm_art_venues_count ?? 0) +
+    (props.osm_cultural_centers_count ?? 0) +
+    (props.osm_entertainment_venues_count ?? 0) +
+    (props.osm_heritage_sites_count ?? 0) +
+    (props.osm_museums_historical_count ?? 0) +
+    (props.arts_entertainment_fsq_count ?? 0);
+
   return {
     h3_index: ctx.mode === 'h3' ? ctx.h3Index : '',
     resolution: ctx.mode === 'h3' ? ctx.resolution : 0,
     area_km2: ctx.areaKm2,
     chrono_score: score.score,
     chrono_grade: score.grade,
+    // All 7 chapters
     fabric_score: score.chapters.fabric.score,
     resilience_score: score.chapters.resilience.score,
     vitality_score: score.chapters.vitality.score,
     connectivity_score: score.chapters.connectivity.score,
+    prosperity_score: score.chapters.prosperity.score,
+    environment_score: score.chapters.environment.score,
+    culture_score: score.chapters.culture.score,
+    // Key indicators
     population: props.population ?? 0,
     building_density: props.builtup ?? 0,
     green_cover: (props.forest ?? 0) + (props.herbage ?? 0) + (props.shrubs ?? 0),
     poi_density: (props.foursquare_os_places_count ?? 0) / Math.max(ctx.areaKm2, 0.01),
     intersection_density: score.chapters.connectivity.components['intersectionDensity'] ?? 0,
+    gdp_proxy: props.gdp_population ?? 0,
+    inform_risk: props.inform_risk_index ?? 0,
+    cultural_pois: culturalPois,
     data_confidence: score.confidence,
   };
 }
