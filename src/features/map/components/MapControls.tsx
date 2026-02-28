@@ -7,13 +7,19 @@ interface MapControlsProps {
   is3D: boolean;
   onToggle3D: () => void;
   onGeolocate: (lngLat: LngLat) => void;
+  isMobile?: boolean;
 }
 
-const BTN_BASE = 'w-[32px] h-[32px] flex items-center justify-center cursor-pointer transition-colors';
-const BTN_OFF = `${BTN_BASE} bg-white text-neutral-900 hover:bg-neutral-900 hover:text-white`;
-const BTN_ON = `${BTN_BASE} bg-neutral-900 text-white hover:bg-neutral-700`;
+const BTN_BASE_D = 'w-[32px] h-[32px] flex items-center justify-center cursor-pointer transition-colors';
+const BTN_BASE_M = 'w-11 h-11 flex items-center justify-center cursor-pointer transition-colors';
+const BTN_OFF_D = `${BTN_BASE_D} bg-white text-neutral-900 hover:bg-neutral-900 hover:text-white`;
+const BTN_ON_D = `${BTN_BASE_D} bg-neutral-900 text-white hover:bg-neutral-700`;
+const BTN_OFF_M = `${BTN_BASE_M} bg-white text-neutral-900 active:bg-neutral-900 active:text-white`;
+const BTN_ON_M = `${BTN_BASE_M} bg-neutral-900 text-white active:bg-neutral-700`;
 
-export function MapControls({ map, is3D, onToggle3D, onGeolocate }: MapControlsProps): React.ReactElement {
+export function MapControls({ map, is3D, onToggle3D, onGeolocate, isMobile }: MapControlsProps): React.ReactElement {
+  const BTN_OFF = isMobile ? BTN_OFF_M : BTN_OFF_D;
+  const BTN_ON = isMobile ? BTN_ON_M : BTN_ON_D;
   const handleZoomIn = useCallback(() => { map?.zoomIn({ duration: 200 }); }, [map]);
   const handleZoomOut = useCallback(() => { map?.zoomOut({ duration: 200 }); }, [map]);
 
@@ -47,11 +53,14 @@ export function MapControls({ map, is3D, onToggle3D, onGeolocate }: MapControlsP
     );
   }, [map, onGeolocate]);
 
+  const iconSize = isMobile ? 20 : 16;
+  const compassSize = isMobile ? 34 : 28;
+
   return (
-    <div className="absolute bottom-4 left-3 z-10 flex flex-col border-2 border-neutral-900">
+    <div className={`absolute z-10 flex flex-col border-2 border-neutral-900 ${isMobile ? 'bottom-24 right-3' : 'bottom-4 left-3'}`}>
       {/* Zoom In */}
       <button onClick={handleZoomIn} className={BTN_OFF} title="Zoom in">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <svg width={iconSize} height={iconSize} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <line x1="8" y1="3" x2="8" y2="13" />
           <line x1="3" y1="8" x2="13" y2="8" />
         </svg>
@@ -59,7 +68,7 @@ export function MapControls({ map, is3D, onToggle3D, onGeolocate }: MapControlsP
 
       {/* Zoom Out */}
       <button onClick={handleZoomOut} className={`${BTN_OFF} border-t border-neutral-200`} title="Zoom out">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <svg width={iconSize} height={iconSize} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <line x1="3" y1="8" x2="13" y2="8" />
         </svg>
       </button>
@@ -67,23 +76,16 @@ export function MapControls({ map, is3D, onToggle3D, onGeolocate }: MapControlsP
       {/* Architectural north compass — rotates with map bearing */}
       <button onClick={handleResetNorth} className={`${BTN_OFF} border-t border-neutral-200 overflow-visible`} title="Reset north">
         <svg
-          width="28" height="28" viewBox="0 0 28 28" fill="none"
+          width={compassSize} height={compassSize} viewBox="0 0 28 28" fill="none"
           style={{ transform: `rotate(${-bearing}deg)`, transition: 'transform 0.1s ease-out' }}
         >
-          {/* Outer circle */}
           <circle cx="14" cy="14" r="10" stroke="currentColor" strokeWidth="0.6" />
-          {/* Inner circle */}
           <circle cx="14" cy="14" r="8.5" stroke="currentColor" strokeWidth="0.4" />
-          {/* Crosshair — horizontal */}
           <line x1="3" y1="14" x2="5" y2="14" stroke="currentColor" strokeWidth="0.5" />
           <line x1="23" y1="14" x2="25" y2="14" stroke="currentColor" strokeWidth="0.5" />
-          {/* Crosshair — vertical (short tick below) */}
           <line x1="14" y1="23" x2="14" y2="25" stroke="currentColor" strokeWidth="0.5" />
-          {/* North needle — solid black rectangle */}
           <rect x="13" y="5" width="2" height="9" fill="currentColor" />
-          {/* South needle — thin line */}
           <line x1="14" y1="14" x2="14" y2="23" stroke="currentColor" strokeWidth="0.6" />
-          {/* N label */}
           <text x="14" y="3.5" textAnchor="middle" fontSize="4" fontWeight="800" fontFamily="monospace" fill="currentColor">N</text>
         </svg>
       </button>
@@ -104,7 +106,7 @@ export function MapControls({ map, is3D, onToggle3D, onGeolocate }: MapControlsP
         title="Go to my location"
       >
         <svg
-          width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+          width={iconSize} height={iconSize} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
           className={isLocating ? 'animate-pulse' : ''}
         >
           <circle cx="8" cy="8" r="3" />

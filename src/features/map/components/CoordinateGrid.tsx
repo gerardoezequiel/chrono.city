@@ -3,6 +3,7 @@ import type maplibregl from 'maplibre-gl';
 
 interface CoordinateGridProps {
   map: maplibregl.Map | null;
+  isMobile?: boolean;
 }
 
 interface Tick {
@@ -39,7 +40,7 @@ function isMajor(value: number, step: number): boolean {
   return Math.abs(value / step - Math.round(value / step)) < 0.001;
 }
 
-export function CoordinateGrid({ map }: CoordinateGridProps): React.ReactElement | null {
+export function CoordinateGrid({ map, isMobile }: CoordinateGridProps): React.ReactElement | null {
   const [topTicks, setTopTicks] = useState<Tick[]>([]);
   const [rightTicks, setRightTicks] = useState<Tick[]>([]);
   const initRef = useRef(false);
@@ -129,6 +130,15 @@ export function CoordinateGrid({ map }: CoordinateGridProps): React.ReactElement
 
   if (!map) return null;
 
+  // Scale down on mobile: smaller ticks, smaller labels, lower opacity
+  const scale = isMobile ? 0.7 : 1;
+  const majorH = Math.round(MAJOR_TICK * scale);
+  const minorH = Math.round(MINOR_TICK * scale);
+  const labelSize = isMobile ? 'text-[8px]' : 'text-[10px]';
+  const labelOpacity = isMobile ? 0.45 : 0.6;
+  const tickMajorOpacity = isMobile ? 0.3 : 0.4;
+  const tickMinorOpacity = isMobile ? 0.15 : 0.25;
+
   const tickLabelStyle = {
     color: '#dc2626',
     textShadow: '0 0 3px rgba(255,255,255,0.95), 0 0 6px rgba(255,255,255,0.8)',
@@ -152,15 +162,15 @@ export function CoordinateGrid({ map }: CoordinateGridProps): React.ReactElement
           <div
             style={{
               width: 1,
-              height: t.major ? MAJOR_TICK : MINOR_TICK,
+              height: t.major ? majorH : minorH,
               backgroundColor: '#dc2626',
-              opacity: t.major ? 0.4 : 0.25,
+              opacity: t.major ? tickMajorOpacity : tickMinorOpacity,
             }}
           />
           {t.text != null && (
             <span
-              className="font-mono text-[10px] font-semibold tracking-wide leading-none"
-              style={{ ...tickLabelStyle, opacity: 0.6, paddingTop: 2 }}
+              className={`font-mono ${labelSize} font-semibold tracking-wide leading-none`}
+              style={{ ...tickLabelStyle, opacity: labelOpacity, paddingTop: 2 }}
             >
               {t.text}
             </span>
@@ -182,18 +192,18 @@ export function CoordinateGrid({ map }: CoordinateGridProps): React.ReactElement
         >
           {t.text != null && (
             <span
-              className="font-mono text-[10px] font-semibold tracking-wide leading-none"
-              style={{ ...tickLabelStyle, opacity: 0.6, paddingRight: 2 }}
+              className={`font-mono ${labelSize} font-semibold tracking-wide leading-none`}
+              style={{ ...tickLabelStyle, opacity: labelOpacity, paddingRight: 2 }}
             >
               {t.text}
             </span>
           )}
           <div
             style={{
-              width: t.major ? MAJOR_TICK : MINOR_TICK,
+              width: t.major ? majorH : minorH,
               height: 1,
               backgroundColor: '#dc2626',
-              opacity: t.major ? 0.4 : 0.25,
+              opacity: t.major ? tickMajorOpacity : tickMinorOpacity,
             }}
           />
         </div>

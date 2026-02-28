@@ -7,6 +7,8 @@ import type { ReverseResult } from '@/features/geocoder';
 import { Sidebar } from '@/features/sections';
 import type { LngLat, StudyAreaMode } from '@/shared/types/geo';
 import { ISOCHRONE_PRESETS } from '@/config/constants';
+import { useIsMobile } from '@/shared/hooks/useIsMobile';
+import { MobileSheet } from '@/shared/components/MobileSheet';
 
 const ISOCHRONE_SVG = `<svg width="22" height="22" viewBox="0 0 16 16" fill="none">
   <path d="M8 5.5C7 5.3 6 6 5.8 7C5.6 8 6.3 8.8 7 9.3C7.7 9.8 8.5 10 9.2 9.5C10 9 10.5 8 10.3 7C10.1 6 9 5.7 8 5.5Z" stroke="currentColor" stroke-width="1.2"/>
@@ -154,43 +156,65 @@ export function App(): React.ReactElement {
     setReverseResult(null);
   }, []);
 
+  const isMobile = useIsMobile();
+
+  const sidebarEl = (
+    <Sidebar
+      origin={origin}
+      reverseResult={reverseResult}
+      status={status}
+      error={error}
+      mode={studyAreaMode}
+      onModeChange={setStudyAreaMode}
+      customMinutes={customMinutes}
+      onCustomMinutesChange={handleCustomMinutesChange}
+      onClear={handleClear}
+      geocoder={geocoder}
+      onGeocoderSelect={handleGeocoderSelect}
+      map={mapRef.current}
+      isMobile={isMobile}
+    />
+  );
+
+  const mapArea = (
+    <>
+      <MapContainer onMapReady={onMapReady} onMapClick={handleMapClick} is3D={is3D} />
+      <IsochroneLayer
+        map={mapRef.current}
+        features={features}
+        origin={origin}
+        mode={studyAreaMode}
+        contours={contours}
+        isDragging={isDragging}
+      />
+      <MapControls
+        map={mapRef.current}
+        is3D={is3D}
+        onToggle3D={() => setIs3D((v) => !v)}
+        onGeolocate={handleGeolocate}
+        isMobile={isMobile}
+      />
+      <MapOverlays isMobile={isMobile} />
+      <BuildingTooltip />
+      <CoordinateGrid map={mapRef.current} isMobile={isMobile} />
+      <ScaleBar map={mapRef.current} isMobile={isMobile} />
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <div className="w-full h-full relative">
+        <div className="absolute inset-0">{mapArea}</div>
+        <MobileSheet>{sidebarEl}</MobileSheet>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-full relative">
-      <Sidebar
-        origin={origin}
-        reverseResult={reverseResult}
-        status={status}
-        error={error}
-        mode={studyAreaMode}
-        onModeChange={setStudyAreaMode}
-        customMinutes={customMinutes}
-        onCustomMinutesChange={handleCustomMinutesChange}
-        onClear={handleClear}
-        geocoder={geocoder}
-        onGeocoderSelect={handleGeocoderSelect}
-        map={mapRef.current}
-      />
-
+      {sidebarEl}
       <div className="absolute top-0 left-[400px] right-0 bottom-0">
-        <MapContainer onMapReady={onMapReady} onMapClick={handleMapClick} is3D={is3D} />
-        <IsochroneLayer
-          map={mapRef.current}
-          features={features}
-          origin={origin}
-          mode={studyAreaMode}
-          contours={contours}
-          isDragging={isDragging}
-        />
-        <MapControls
-          map={mapRef.current}
-          is3D={is3D}
-          onToggle3D={() => setIs3D((v) => !v)}
-          onGeolocate={handleGeolocate}
-        />
-        <MapOverlays />
-        <BuildingTooltip />
-        <CoordinateGrid map={mapRef.current} />
-        <ScaleBar map={mapRef.current} />
+        {mapArea}
       </div>
     </div>
   );

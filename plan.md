@@ -1,265 +1,203 @@
-# UX Plan: Exploration vs. Report — chrono.city vs Aino
+# Mobile Responsiveness Fix Plan
 
-## Competitive Analysis: chrono.city vs Aino
+## Problem Summary
 
-### What Aino Does
-
-[Aino](https://www.aino.world/) is an AI-powered GIS platform ($90-150/month) that generates static site analysis reports. Their [15mincity.ai](https://www.15mincity.ai/) demo evaluates any location against the 15-minute city concept.
-
-**Aino's model:** Click → Wait → Get a report. One-shot. Static.
-
-| Aino Strength | How chrono.city Differs |
-|--------------|------------------------|
-| AI natural language queries | We give direct visual exploration — no prompt needed |
-| 10,000+ datasets (demographics, zoning, mobility) | We focus deeply on 4 Overture layers, computed live |
-| Persona-based scoring (families, students, etc.) | We show universal urban quality metrics with academic rigor |
-| PDF export | We provide a live, interactive, shareable experience |
-| 400+ cities | We work on ANY coordinate on Earth (Overture is global) |
-| Server-side computation, API keys, accounts | Zero backend. `git clone && npm run dev`. Free forever. |
-
-### Where Aino Falls Short (our opportunity)
-
-1. **No real-time interaction.** You get a report. You can't drag, pan, or explore. You can't say "what if I moved 3 blocks east?"
-2. **No progressive discovery.** You wait for the entire analysis. No visual feedback during computation.
-3. **No map-as-content.** Their maps are static imagery. Our PMTiles ARE the content — buildings, roads, POIs visible instantly.
-4. **No comparative exploration.** You can't easily compare two neighborhoods side-by-side in real-time.
-5. **Black box scoring.** Their AI generates scores with opaque methodology. We show every formula, every data source, every academic reference.
-6. **Server dependency.** Aino requires accounts, subscriptions, and internet. We run entirely in the browser.
-
-### chrono.city's Differentiator
-
-**Aino = "Ask and wait for a report."**
-**chrono.city = "Explore and discover as you move."**
-
-The map tells the story BEFORE any query runs. The user never waits — they read, explore, drag, and discover. Numbers arrive to confirm what the visuals already showed.
+chrono.city is completely unusable on phones. The sidebar is hardcoded at 400px (most phones are 360-414px wide), covering the entire screen. The map is pushed off-screen with `left-[400px]`. There are zero responsive breakpoints in the entire codebase. Touch targets are below WCAG minimums, and text is illegible at mobile sizes.
 
 ---
 
-## The UX Vision: Seven Layers of Progressive Discovery
+## Critical Issues (Ranked by Impact)
 
-### Layer 1: PMTiles as Instant Content (0ms)
+### 1. LAYOUT KILLER: Sidebar covers entire phone screen
+**Files:** `App.tsx:158,174` + `Sidebar.tsx:61`
+- Sidebar: `fixed top-0 left-0 w-[400px] h-dvh z-50` — 400px fills/overflows a 360px phone
+- Map container: `absolute top-0 left-[400px] right-0 bottom-0` — map starts at 400px, invisible on phone
+- **Fix:** On mobile (<768px), switch to stacked layout: map fills viewport, sidebar becomes a bottom sheet that slides up/down. On tablet (768-1024px), use narrower sidebar (320px).
 
-The map already contains 80% of the analytical story:
-- Building footprints → urban fabric density, grain, form
-- Road network → connectivity, grid pattern, dead-ends
-- POI dots → amenity clustering, service coverage
+### 2. NO RESPONSIVE BREAKPOINTS
+**Files:** Every component
+- Zero `sm:`, `md:`, `lg:` Tailwind prefixes in the entire codebase
+- **Fix:** Add mobile-first responsive classes to all layout-critical components
 
-**What to build:**
-- Visual density heatmap derived from building fill opacity (no query needed — PMTiles paint expression)
-- Road network emphasis that shifts by section (buildings section → faded roads; network section → road classes colored)
-- POI clustering visible at zoom levels (places-dots already exist, need category-colored variant)
-- Land use polygons from Overture `base` theme (green spaces, water — currently not loaded!)
+### 3. MAP CONTROLS TOO SMALL FOR TOUCH
+**File:** `MapControls.tsx:12-14`
+- Buttons are 32x32px (`w-[32px] h-[32px]`) — below WCAG 44x44px minimum
+- **Fix:** On mobile, increase to `w-11 h-11` (44px). Also increase icon SVGs proportionally.
 
-### Layer 2: Contextual Narratives (0ms)
+### 4. TEXT TOO SMALL FOR MOBILE
+**Files:** Throughout sidebar components
+- `text-[8px]`, `text-[9px]`, `text-[10px]` used extensively for labels, badges, coordinates
+- Minimum readable on mobile is ~12px
+- **Fix:** Scale up small text on mobile using responsive classes (e.g., `text-[10px] md:text-[8px]`)
 
-Each section opens with editorial text that teaches the user what they're looking at:
+### 5. HOVER-ONLY INTERACTIONS
+**Files:** `Sidebar.tsx:71,101-103,118`, `MapControls.tsx:13-14`, `LocationBar.tsx:96,115,127`, `ScaleBar.tsx:140-141`
+- Buttons rely on `hover:` state changes for visual feedback — invisible on touch devices
+- **Fix:** Add `active:` states alongside `hover:` for touch feedback
 
-```
-┌──────────────────────────────────────┐
-│ ▸ URBAN FABRIC                       │
-│                                      │
-│ Building footprints reveal the       │
-│ city's DNA. Dense, fine-grained      │
-│ patterns — like those visible on     │
-│ the map — indicate a walkable        │
-│ neighborhood where destinations      │
-│ are close together.                  │
-│                                      │
-│ ↳ Look at the map: are buildings     │
-│   tightly packed or spread apart?    │
-└──────────────────────────────────────┘
-```
+### 6. ATTRIBUTION BUTTON TOO SMALL
+**File:** `ScaleBar.tsx:139-141`
+- 20x20px (`w-5 h-5`) — nearly impossible to tap on mobile
+- **Fix:** Increase to 36px on mobile with larger tap area
 
-**Already implemented** in `config/narratives.ts`. Next step: make narratives dynamic — they should reference actual data once resolved: *"This area has {buildingCount} buildings across {areaHa} hectares..."*
+### 7. RANGE SLIDER UNUSABLE ON TOUCH
+**File:** `Sidebar.tsx:125-133`
+- Slider thumb is 12x12px — too small for finger
+- Track is 2px tall — nearly invisible to tap
+- **Fix:** Increase thumb to 24x24px and track to 6px on mobile
 
-### Layer 3: Scroll-Driven Map Theater (0ms)
-
-As the user scrolls through chapters, the map transforms:
-
-```
-Overview:   Basemap + all layers subtle
-    ↓ scroll
-Buildings:  Building fills darken, 3D extrusions enabled, roads fade
-    ↓ scroll
-Network:    Roads overlay appears with class-colored styling, buildings recede
-    ↓ scroll
-Amenities:  POI dots bloom, category colors, 15-min service radius rings
-    ↓ scroll
-Walkability: Isochrone polygon + all layers combined
-```
-
-**Partially implemented** via `useScrollSpy` + `useMapLayerSync`. Missing:
-- Smooth cross-fade transitions (currently instant show/hide)
-- 3D toggle tied to buildings section scroll
-- Category-colored POI dots for amenities section
-- Layer opacity animation (300ms ease-out)
-
-### Layer 4: Real-Time Chart Theater During Drag (NEW)
-
-This is the killer feature Aino can't match. While the user drags the pedshed marker, charts update in real-time using `queryRenderedFeatures`:
-
-```
-┌──────────────────────────────────────┐
-│ ▸ URBAN FABRIC           ← dragging  │
-│                                      │
-│  ┌──────────┐  ┌──────────┐         │
-│  │ ~2,847   │  │ ~890     │         │
-│  │ buildings │  │ inside   │   ← approximate
-│  │ (approx) │  │ pedshed  │     from tiles
-│  └──────────┘  └──────────┘         │
-│                                      │
-│  Building Heights        Road Mix    │
-│  ▁▂▃▅▇█▇▅▃▁           ━━━ 42% res  │
-│                         ━━  28% sec  │  ← live charts
-│                         ━   18% pri  │    from rendered
-│                         ━   12% oth  │    features
-│                                      │
-│  ↳ Release to compute exact metrics  │
-└──────────────────────────────────────┘
-```
-
-**Implementation approach:**
-1. `queryRenderedFeatures` on drag → approximate building count, height distribution, road class mix
-2. Charts render with "approximate" styling (dashed borders, ~prefix on numbers)
-3. On drag END → fire DuckDB queries → charts snap to exact values with solid styling
-4. Transition from approximate → exact is animated (bars resize, numbers count-up)
-
-**Key charts to build:**
-- **Height histogram** (buildings section): bars for 0-5m, 5-10m, 10-20m, 20-50m, 50m+
-- **Road class donut** (network section): residential, secondary, primary, footway, cycleway
-- **Category treemap** (amenities section): food, health, education, shopping, leisure, civic
-- **15-min completeness radar** (amenities section): 6 spokes for service categories
-- **Chrono Score radar** (overview): 4 spokes for chapter scores
-
-### Layer 5: Progressive Chapter Scoring (1-15s per chapter)
-
-Each section computes its chapter score independently. The overview's Chrono Score gauge builds up as chapters resolve:
-
-```
-t=0s:   Chrono Score: —/100  [Fabric: — ] [Resilience: — ] [Vitality: — ] [Connectivity: — ]
-t=3s:   Chrono Score: 72/100 [Fabric: 72] [Resilience: — ] [Vitality: — ] [Connectivity: — ]
-t=6s:   Chrono Score: 68/100 [Fabric: 72] [Resilience: 58] [Vitality: — ] [Connectivity: — ]
-t=9s:   Chrono Score: 71/100 [Fabric: 72] [Resilience: 58] [Vitality: 81] [Connectivity: — ]
-t=12s:  Chrono Score: 69/100 [Fabric: 72] [Resilience: 58] [Vitality: 81] [Connectivity: 62]
-```
-
-The composite recalculates with each new chapter. User watches it converge. Feels alive.
-
-**Already partially implemented** in `ChronoScore.tsx`. Missing: actual score computation from metrics (currently all nulls).
-
-### Layer 6: Neighborhood Discovery Mode (NEW — the "best neighborhood" answer)
-
-To answer "which is the best neighborhood?", we need a city-wide view:
-
-**Option A: Hex Grid Heatmap**
-1. Tile the visible area into H3 hexagons (~200m radius)
-2. For each hex centroid, compute a quick Chrono Score approximation using `queryRenderedFeatures`:
-   - Building density from visible footprints → Fabric proxy
-   - Road density from visible segments → Connectivity proxy
-   - POI count from visible dots → Vitality proxy
-3. Color hexagons by score (green → yellow → red)
-4. User sees hotspots instantly, clicks one → deep dive
-
-**Option B: Drag-to-Compare**
-1. User can pin a location (bookmark the current analysis)
-2. Drag to new location → side-by-side comparison appears
-3. "This area has 3x more cafes but 40% fewer parks"
-4. Radar chart overlays both locations
-
-**Option C: City Pulse (scroll-free overview)**
-1. Zoom out to city scale
-2. Show aggregated scores as colored dots on major intersections
-3. Each dot = quick DuckDB query for that bbox
-4. Prefetch as user pans → builds city-wide intelligence map
-
-**Recommended: Start with Option B** (drag-to-compare). It leverages existing infrastructure (pedshed drag, DuckDB queries, metric cards) and directly answers "which neighborhood is better?"
-
-### Layer 7: Deep Research Mode (NEW)
-
-When user wants to go deeper on a specific area:
-
-**Expandable metric cards:**
-- Click a metric → it expands to show:
-  - Distribution chart (not just the average)
-  - Academic context ("GSI of 0.35 indicates Barcelona-style block density")
-  - Data quality indicator ("based on 3,247 buildings, 89% with height data")
-  - Comparison to global benchmarks
-
-**Section drill-down:**
-- Each section has a "Deep Dive" toggle
-- Expands to show all 5-6 metrics (normally shows top 3)
-- Shows computed formulas with actual values
-- Links to academic references
-
-This maps to the `lazy: true` pattern in MetricDescriptor — expensive metrics computed on demand, not on scroll.
+### 8. SEARCH INPUT MOBILE KEYBOARD ISSUES
+**File:** `LocationBar.tsx:83-91`
+- Input triggers mobile keyboard which pushes content up
+- Dropdown (`max-h-60`) may be clipped by keyboard
+- **Fix:** Ensure dropdown has appropriate max-height accounting for keyboard
 
 ---
 
-## Implementation Priority (what to build next)
+## Implementation Plan
 
-### Phase A: Charts + Real-Time Drag (HIGH IMPACT)
+### Phase A: Core Layout Restructure (highest impact)
 
-This is the single biggest UX upgrade. Without charts, we're just showing numbers. Charts make the data spatial, comparative, and beautiful.
+#### A1. Create mobile layout hook
+**New file:** `src/shared/hooks/useIsMobile.ts`
+- `useIsMobile()` returns boolean (< 768px)
+- Uses `matchMedia` for performance (no resize listener spam)
+- SSR-safe with initial false
 
-1. **MiniBar component** — horizontal bar chart, 60 lines, renders from data array
-2. **MiniDonut component** — category donut, 80 lines, renders from distribution
-3. **MiniRadar component** — 6-spoke radar, 90 lines, for 15-min completeness + Chrono Score
-4. **Chart bindings** in config/charts.ts — register which chart goes where
-5. **useVisualChartData hook** — queryRenderedFeatures → chart-ready data during drag
-6. **Approximate → Exact transition** — charts animate from tile-derived to DuckDB-derived data
+#### A2. Create MobileSheet wrapper
+**New file:** `src/shared/components/MobileSheet.tsx`
+- Bottom sheet with 3 snap points: collapsed (header only ~80px), half (~50vh), full (~85vh)
+- Drag handle at top for swipe gestures
+- Touch-based: onTouchStart/onTouchMove/onTouchEnd
+- CSS transform for smooth animation (GPU-accelerated)
+- Shows map behind it (map fills full viewport)
+- No external library needed — ~100 lines of code
 
-### Phase B: Smooth Layer Transitions (POLISH)
+#### A3. Make App.tsx responsive
+**File:** `src/app/App.tsx`
 
-1. Cross-fade layer opacity on scroll (300ms ease-out)
-2. Auto-3D toggle when buildings section scrolls into view
-3. Category-colored POI dots (food=amber, health=red, education=blue, etc.)
-4. Land use PMTiles layer (green spaces visible instantly)
+Mobile (<768px):
+```
+<div className="w-full h-full relative">
+  <div className="absolute inset-0">  <!-- map fills entire screen -->
+    <MapContainer /> + overlays
+  </div>
+  <MobileSheet>  <!-- bottom sheet overlay -->
+    <Sidebar ... />
+  </MobileSheet>
+</div>
+```
 
-### Phase C: Neighborhood Comparison (DIFFERENTIATOR)
+Desktop (>=768px):
+```
+Keep current 400px sidebar + left-[400px] map layout
+```
 
-1. Pin/bookmark current analysis
-2. Drag to second location → comparison sidebar
-3. Delta metrics ("+23% more buildings", "-40% parks")
-4. Overlay radar charts
+#### A4. Make Sidebar responsive
+**File:** `src/features/sections/components/Sidebar.tsx`
 
-### Phase D: Advanced Metrics Computation (DEPTH)
+Mobile: Remove `fixed`, `w-[400px]`, `h-dvh` — parent MobileSheet handles positioning.
+Use `w-full` and let content scroll within the sheet.
 
-1. Implement all 21 metrics from METRICS_FRAMEWORK.md
-2. Wire chapter scores to real computed values
-3. Score normalization against academic ranges
-4. Dynamic narratives with actual data values
+Desktop: Keep current `fixed top-0 left-0 w-[400px] h-dvh z-50`.
+
+### Phase B: Touch Target & Interaction Fixes
+
+#### B1. MapControls touch targets
+**File:** `src/features/map/components/MapControls.tsx`
+- Mobile: `w-11 h-11` (44px), icons scale to 20px
+- Desktop: keep `w-[32px] h-[32px]`
+- Add `active:` states for touch feedback
+- Reposition on mobile: move to avoid overlap with bottom sheet
+
+#### B2. Mode toggle, buttons, slider
+**File:** `src/features/sections/components/Sidebar.tsx`
+- Mode toggle buttons: add min-h-[44px] on mobile
+- Clear button: increase padding on mobile
+- Walk time slider: increase thumb to 24x24px and track height on mobile
+- Add `active:` states everywhere `hover:` is used
+
+#### B3. LocationBar touch improvements
+**File:** `src/features/sections/components/LocationBar.tsx`
+- Search input: increase height to 44px on mobile
+- Search results: increase `py-2.5` → `py-3.5` on mobile for larger tap targets
+- Close button: increase tap area
+
+### Phase C: Typography Scale
+
+All sidebar components — increase minimum text sizes on mobile:
+```
+Current → Mobile minimum:
+text-[8px]  → text-[11px] md:text-[8px]
+text-[9px]  → text-[11px] md:text-[9px]
+text-[10px] → text-[12px] md:text-[10px]
+text-[11px] → text-[13px] md:text-[11px]
+```
+
+Files: `SectionShell.tsx`, `MetricCard.tsx`, `ChronoScore.tsx`, `Sidebar.tsx`, `LocationBar.tsx`
+
+### Phase D: Map Overlay Adjustments
+
+#### D1. CoordinateGrid — hide on mobile
+**File:** `src/features/map/components/CoordinateGrid.tsx`
+- Too cluttered on small screens, adds no value on phone
+
+#### D2. MapOverlays — reduce on mobile
+**File:** `src/features/map/components/MapOverlays.tsx`
+- Hide crosshair on mobile (finger is the pointer)
+- Reduce vignette intensity
+
+#### D3. ScaleBar — reposition on mobile
+**File:** `src/features/map/components/ScaleBar.tsx`
+- Move to avoid overlap with bottom sheet
+- Attribution button: increase to `w-9 h-9` on mobile
+
+### Phase E: CSS & Viewport
+
+#### E1. Add viewport-fit for notch support
+**File:** `index.html`
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+```
+
+#### E2. Add safe area padding
+**File:** `src/styles/index.css`
+- Add `env(safe-area-inset-*)` for notched phones
+- Add `touch-action: manipulation` on interactive elements to prevent double-tap zoom
 
 ---
 
-## File Plan
+## File Change Summary
 
-```
-NEW FILES:
-  src/features/charts/
-    components/
-      MiniBar.tsx           — horizontal bar chart (≤80 lines)
-      MiniDonut.tsx         — category donut chart (≤90 lines)
-      MiniRadar.tsx         — 6-spoke radar chart (≤90 lines)
-    hooks/
-      useChartData.ts       — transform metric data → chart props
-    index.ts                — public API
+| File | Change | Priority |
+|------|--------|----------|
+| `src/shared/hooks/useIsMobile.ts` | NEW | A |
+| `src/shared/components/MobileSheet.tsx` | NEW | A |
+| `src/app/App.tsx` | EDIT — conditional layout | A |
+| `src/features/sections/components/Sidebar.tsx` | EDIT — responsive width/position | A |
+| `src/features/map/components/MapControls.tsx` | EDIT — larger touch targets | B |
+| `src/features/sections/components/LocationBar.tsx` | EDIT — touch improvements | B |
+| `src/features/sections/components/SectionShell.tsx` | EDIT — responsive text | C |
+| `src/shared/components/MetricCard.tsx` | EDIT — responsive text | C |
+| `src/features/sections/components/ChronoScore.tsx` | EDIT — responsive text | C |
+| `src/features/map/components/CoordinateGrid.tsx` | EDIT — hide on mobile | D |
+| `src/features/map/components/MapOverlays.tsx` | EDIT — reduce on mobile | D |
+| `src/features/map/components/ScaleBar.tsx` | EDIT — reposition + larger attr btn | D |
+| `index.html` | EDIT — viewport-fit | E |
+| `src/styles/index.css` | EDIT — safe areas, touch-action | E |
 
-  src/features/sections/
-    hooks/
-      useVisualChartData.ts — queryRenderedFeatures → chart data during drag
-      useDragState.ts       — tracks drag vs settled state
-    components/
-      ComparisonPanel.tsx   — side-by-side neighborhood comparison
+---
 
-  src/config/
-    charts.ts               — ChartBinding[] per section
-    benchmarks.ts           — academic reference ranges for each metric
+## Key Design Decisions
 
-MODIFIED FILES:
-  src/features/sections/components/SectionShell.tsx  — add chart rendering from bindings
-  src/features/sections/components/Sidebar.tsx       — wire drag state + comparison
-  src/features/map/components/MapContainer.tsx       — add land_use PMTiles source + layer
-  src/config/sections.ts                             — add chart bindings per section
-  src/config/narratives.ts                           — dynamic narrative templates with {placeholders}
-  src/shared/components/MetricCard.tsx               — expandable detail mode
-```
+1. **Bottom sheet over hamburger menu** — The sidebar IS the app. Hiding it behind a hamburger kills the scroll-driven narrative. A bottom sheet keeps content visible and swipeable.
+
+2. **No external library for bottom sheet** — Touch gesture handling is ~100 lines. Avoids adding a dependency and keeps bundle lean for mobile networks.
+
+3. **CSS-first responsive approach** — Use Tailwind's responsive prefixes wherever possible. Only use the `useIsMobile` hook where layout structure must fundamentally change (bottom sheet vs sidebar).
+
+4. **Mobile-first text scaling** — Write mobile sizes first, then `md:` for desktop reduction. This ensures mobile is never forgotten.
+
+5. **Hide decorative elements on mobile** — CoordinateGrid, crosshair, and heavy vignette are desktop luxuries. Mobile needs clean, fast, uncluttered.
+
+6. **Marker drag works on mobile** — MapLibre's built-in touch drag already works. The 28px marker is borderline but acceptable with the visual affordance (circle with icon). No changes needed here.

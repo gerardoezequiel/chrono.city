@@ -45,29 +45,27 @@ export function ChronoScore({ chapters }: ChronoScoreProps): React.ReactElement 
   const grade = displayScore != null ? gradeLabel(displayScore) : null;
 
   return (
-    <div className="px-6 py-5 border-b border-neutral-200">
+    <div className="px-4 md:px-6 py-4 md:py-5 border-b border-neutral-200">
       <div className="flex items-baseline justify-between">
         <h3 className="font-heading text-sm font-bold text-neutral-900 uppercase tracking-tight">Chrono Score</h3>
-        <span className="font-mono text-[8px] text-neutral-400 uppercase tracking-wider">
+        <span className="font-mono text-[11px] md:text-[8px] text-neutral-400 uppercase tracking-wider">
           {resolvedCount}/{totalChapters} chapters
         </span>
       </div>
 
       {/* Score gauge */}
       <div className="mt-4 flex items-center gap-4">
-        {/* Large score number */}
         <div className="flex items-baseline gap-1">
-          <span className="font-mono text-4xl font-bold text-neutral-900 tabular-nums tracking-tighter">
+          <span className="font-mono text-3xl md:text-4xl font-bold text-neutral-900 tabular-nums tracking-tighter">
             {displayScore != null ? displayScore : '—'}
           </span>
           <span className="font-mono text-sm text-neutral-400">/100</span>
         </div>
 
-        {/* Grade badge */}
         {grade && (
           <div className="flex flex-col">
             <span className="font-heading text-lg font-bold text-neutral-900 uppercase">{grade.grade}</span>
-            <span className="font-mono text-[9px] text-neutral-400 uppercase tracking-wider">{grade.label}</span>
+            <span className="font-mono text-[11px] md:text-[9px] text-neutral-400 uppercase tracking-wider">{grade.label}</span>
           </div>
         )}
       </div>
@@ -88,7 +86,7 @@ export function ChronoScore({ chapters }: ChronoScoreProps): React.ReactElement 
       </div>
 
       {resolvedCount < totalChapters && (
-        <p className="font-mono text-[9px] text-neutral-400 mt-3 italic">
+        <p className="font-mono text-[11px] md:text-[9px] text-neutral-400 mt-3 italic">
           Scroll to explore each chapter. Score refines as data loads.
         </p>
       )}
@@ -109,7 +107,7 @@ function ChapterBadge({ label, score }: { label: string; score: number | null })
           <span className="inline-block w-6 h-4 bg-neutral-100 animate-pulse" />
         )}
       </p>
-      <p className="font-mono text-[8px] text-neutral-400 uppercase tracking-widest mt-0.5">{label}</p>
+      <p className="font-mono text-[11px] md:text-[8px] text-neutral-400 uppercase tracking-widest mt-0.5">{label}</p>
     </div>
   );
 }

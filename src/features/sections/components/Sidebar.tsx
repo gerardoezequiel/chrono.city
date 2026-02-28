@@ -41,6 +41,7 @@ interface SidebarProps {
   geocoder: GeocoderState;
   onGeocoderSelect: (lngLat: LngLat, displayName: string) => void;
   map: maplibregl.Map | null;
+  isMobile?: boolean;
 }
 
 const MODES: { value: StudyAreaMode; label: string }[] = [
@@ -48,7 +49,7 @@ const MODES: { value: StudyAreaMode; label: string }[] = [
   { value: 'isochrone', label: 'Isochrone' },
 ];
 
-export function Sidebar({ origin, reverseResult, status, error, mode, onModeChange, customMinutes, onCustomMinutesChange, onClear, geocoder, onGeocoderSelect, map }: SidebarProps): React.ReactElement {
+export function Sidebar({ origin, reverseResult, status, error, mode, onModeChange, customMinutes, onCustomMinutesChange, onClear, geocoder, onGeocoderSelect, map, isMobile }: SidebarProps): React.ReactElement {
   const isCustom = customMinutes != null;
   const bbox = useMemo(() => origin ? originToBbox(origin) : null, [origin]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -57,25 +58,29 @@ export function Sidebar({ origin, reverseResult, status, error, mode, onModeChan
   // Sync map layers with scroll position
   useMapLayerSync(map, activeSection);
 
+  const asideClass = isMobile
+    ? 'flex flex-col bg-white w-full'
+    : 'fixed top-0 left-0 w-[400px] h-dvh z-50 flex flex-col bg-white border-r-2 border-neutral-900';
+
   return (
-    <aside className="fixed top-0 left-0 w-[400px] h-dvh z-50 flex flex-col bg-white border-r-2 border-neutral-900">
+    <aside className={asideClass}>
       {/* Header */}
-      <header className="px-6 pt-6 pb-4 border-b-2 border-neutral-900 shrink-0">
+      <header className="px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4 border-b-2 border-neutral-900 shrink-0">
         <div className="flex items-center justify-between">
-          <h1 className="font-heading text-lg font-bold uppercase tracking-tight text-neutral-900">chrono.city</h1>
+          <h1 className="font-heading text-base md:text-lg font-bold uppercase tracking-tight text-neutral-900">chrono.city</h1>
           <div className="flex items-center gap-2">
             {origin && <StatusBadge status={status} />}
             {origin && (
               <button
                 onClick={onClear}
-                className="font-mono text-[10px] font-medium px-2 py-1 text-neutral-500 border border-neutral-300 hover:border-neutral-900 hover:text-neutral-900 transition-colors cursor-pointer uppercase tracking-wider"
+                className="font-mono text-[11px] md:text-[10px] font-medium px-2.5 py-1.5 md:px-2 md:py-1 text-neutral-500 border border-neutral-300 hover:border-neutral-900 hover:text-neutral-900 active:bg-neutral-900 active:text-white transition-colors cursor-pointer uppercase tracking-wider"
               >
                 Clear
               </button>
             )}
           </div>
         </div>
-        <p className="font-mono text-[10px] text-neutral-400 mt-1 uppercase tracking-widest">Anatomy of proximity</p>
+        <p className="font-mono text-[12px] md:text-[10px] text-neutral-400 mt-1 uppercase tracking-widest">Anatomy of proximity</p>
       </header>
 
       {/* Location bar */}
@@ -91,16 +96,16 @@ export function Sidebar({ origin, reverseResult, status, error, mode, onModeChan
       />
 
       {/* Mode toggle + walk time */}
-      <div className="px-6 py-3 border-b-2 border-neutral-200 shrink-0 flex flex-col gap-3">
+      <div className="px-4 md:px-6 py-3 border-b-2 border-neutral-200 shrink-0 flex flex-col gap-3">
         <div className="flex gap-0">
           {MODES.map(({ value, label }) => (
             <button
               key={value}
               onClick={() => onModeChange(value)}
-              className={`flex-1 flex items-center justify-center gap-1.5 font-heading text-[11px] font-semibold uppercase tracking-wider py-2 transition-all cursor-pointer border-2 ${
+              className={`flex-1 flex items-center justify-center gap-1.5 font-heading text-[12px] md:text-[11px] font-semibold uppercase tracking-wider min-h-[44px] md:min-h-0 py-2 transition-all cursor-pointer border-2 ${
                 mode === value
                   ? 'bg-neutral-900 text-white border-neutral-900'
-                  : 'bg-white text-neutral-400 border-neutral-200 hover:border-neutral-400 hover:text-neutral-600'
+                  : 'bg-white text-neutral-400 border-neutral-200 hover:border-neutral-400 hover:text-neutral-600 active:bg-neutral-100'
               } ${value === 'ring' ? 'border-r-0' : ''}`}
             >
               {value === 'isochrone' ? <IsochroneIcon /> : <PedshedIcon />}
@@ -109,13 +114,13 @@ export function Sidebar({ origin, reverseResult, status, error, mode, onModeChan
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-neutral-400 shrink-0 uppercase tracking-wider">Walk</span>
+          <span className="font-mono text-[12px] md:text-[10px] text-neutral-400 shrink-0 uppercase tracking-wider">Walk</span>
           {!isCustom ? (
             <>
               <span className="font-mono text-[12px] font-medium text-neutral-900 tracking-tight">5 · 10 · 15 min</span>
               <button
                 onClick={() => onCustomMinutesChange(10)}
-                className="ml-auto font-mono text-[10px] text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer font-medium uppercase tracking-wider border-b border-neutral-300 hover:border-neutral-900"
+                className="ml-auto font-mono text-[12px] md:text-[10px] text-neutral-500 hover:text-neutral-900 active:text-neutral-900 transition-colors cursor-pointer font-medium uppercase tracking-wider border-b border-neutral-300 hover:border-neutral-900 min-h-[44px] md:min-h-0 flex items-center"
               >
                 Custom
               </button>
@@ -129,17 +134,17 @@ export function Sidebar({ origin, reverseResult, status, error, mode, onModeChan
                 step={1}
                 value={customMinutes}
                 onChange={(e) => onCustomMinutesChange(Number(e.target.value))}
-                className="flex-1 h-0.5 bg-neutral-300 appearance-none cursor-pointer accent-neutral-900 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:bg-neutral-900 [&::-webkit-slider-thumb]:appearance-none"
+                className="flex-1 h-1.5 md:h-0.5 bg-neutral-300 appearance-none cursor-pointer accent-neutral-900 [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 md:[&::-webkit-slider-thumb]:w-3 md:[&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:bg-neutral-900 [&::-webkit-slider-thumb]:appearance-none"
               />
               <span className="font-mono text-[12px] font-bold text-neutral-900 tabular-nums w-12 text-right shrink-0">
                 {customMinutes} min
               </span>
               <button
                 onClick={() => onCustomMinutesChange(null)}
-                className="text-neutral-400 hover:text-neutral-900 transition-colors cursor-pointer"
+                className="text-neutral-400 hover:text-neutral-900 active:text-neutral-900 transition-colors cursor-pointer min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                 title="Reset to 5 · 10 · 15"
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 md:w-3.5 md:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -149,7 +154,7 @@ export function Sidebar({ origin, reverseResult, status, error, mode, onModeChan
       </div>
 
       {/* Scrollable sections */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden">
+      <div ref={scrollRef} className={`flex-1 overflow-y-auto overflow-x-hidden ${isMobile ? '' : ''}`}>
         {origin && bbox ? (
           <div className="flex flex-col">
             <OverviewSection />
@@ -166,8 +171,8 @@ export function Sidebar({ origin, reverseResult, status, error, mode, onModeChan
               </svg>
             </div>
             <p className="font-heading text-base font-bold text-neutral-900 uppercase tracking-tight">Select a location</p>
-            <p className="font-mono text-[10px] text-neutral-400 mt-2 leading-relaxed uppercase tracking-wider">
-              Search above or click the map
+            <p className="font-mono text-[12px] md:text-[10px] text-neutral-400 mt-2 leading-relaxed uppercase tracking-wider">
+              Search above or tap the map
             </p>
           </div>
         )}
@@ -198,11 +203,11 @@ function OverviewSection(): React.ReactElement {
           { label: 'Connectivity', score: null, weight: 0.25 },
         ]}
       />
-      <div className="px-6 pb-3">
-        <p className="font-mono text-[11px] text-neutral-500 leading-relaxed">
+      <div className="px-4 md:px-6 pb-3">
+        <p className="font-mono text-[13px] md:text-[11px] text-neutral-500 leading-relaxed">
           {narrative.intro}
         </p>
-        <p className="font-mono text-[10px] text-neutral-400 mt-2 italic leading-relaxed">
+        <p className="font-mono text-[12px] md:text-[10px] text-neutral-400 mt-2 italic leading-relaxed">
           {narrative.mapHint}
         </p>
       </div>
@@ -271,7 +276,7 @@ function StatusBadge({ status }: { status: IsochroneStatus }): React.ReactElemen
 
   if (status === 'fetching') {
     return (
-      <span className="font-mono text-[9px] font-bold uppercase tracking-widest px-2 py-1 bg-neutral-100 text-neutral-900 border border-neutral-300">
+      <span className="font-mono text-[11px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-1 bg-neutral-100 text-neutral-900 border border-neutral-300">
         Computing
       </span>
     );
@@ -279,14 +284,14 @@ function StatusBadge({ status }: { status: IsochroneStatus }): React.ReactElemen
 
   if (status === 'done') {
     return (
-      <span className="font-mono text-[9px] font-bold uppercase tracking-widest px-2 py-1 bg-neutral-900 text-white">
+      <span className="font-mono text-[11px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-1 bg-neutral-900 text-white">
         Ready
       </span>
     );
   }
 
   return (
-    <span className="font-mono text-[9px] font-bold uppercase tracking-widest px-2 py-1 bg-white text-neutral-900 border-2 border-neutral-900">
+    <span className="font-mono text-[11px] md:text-[9px] font-bold uppercase tracking-widest px-2 py-1 bg-white text-neutral-900 border-2 border-neutral-900">
       Error
     </span>
   );
