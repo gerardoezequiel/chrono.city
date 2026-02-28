@@ -153,9 +153,9 @@ export function Sidebar({ origin, reverseResult, status, error, mode, onModeChan
         {origin && bbox ? (
           <div className="flex flex-col">
             <OverviewSection />
-            <DataSection sectionId="buildings" bbox={bbox} />
-            <DataSection sectionId="network" bbox={bbox} />
-            <DataSection sectionId="amenities" bbox={bbox} />
+            <DataSection sectionId="buildings" bbox={bbox} activeSection={activeSection} />
+            <DataSection sectionId="network" bbox={bbox} activeSection={activeSection} />
+            <DataSection sectionId="amenities" bbox={bbox} activeSection={activeSection} />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full px-8 text-center">
@@ -212,9 +212,14 @@ function OverviewSection(): React.ReactElement {
 
 // ─── Data-driven section with three-phase reveal ─────────────
 
-function DataSection({ sectionId, bbox }: { sectionId: SectionId; bbox: BBox }): React.ReactElement {
+function DataSection({ sectionId, bbox, activeSection }: { sectionId: SectionId; bbox: BBox; activeSection: SectionId | null }): React.ReactElement {
   const config = getSectionConfig(sectionId);
-  const { data, state, error, queryMs } = useSectionData(sectionId, bbox);
+  // Track if this section was ever scrolled to — once activated, stays active
+  const hasBeenActive = useRef(false);
+  if (activeSection === sectionId) hasBeenActive.current = true;
+  // Always enable the first section (buildings) immediately; others load on scroll
+  const enabled = sectionId === 'buildings' || hasBeenActive.current;
+  const { data, state, error, queryMs } = useSectionData(sectionId, bbox, enabled);
   const narrative = SECTION_NARRATIVES[sectionId as keyof typeof SECTION_NARRATIVES];
 
   if (!config) return <></>;
