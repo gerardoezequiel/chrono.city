@@ -53,7 +53,9 @@ export function Sidebar({ origin, reverseResult, status, error, mode, onModeChan
   const isCustom = customMinutes != null;
   const bbox = useMemo(() => origin ? originToBbox(origin) : null, [origin]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const activeSection = useScrollSpy(scrollRef);
+  // On mobile, scroll happens in MobileSheet parent, not in scrollRef.
+  // Use viewport as IntersectionObserver root so scroll spy still fires.
+  const activeSection = useScrollSpy(scrollRef, isMobile);
 
   // Sync map layers with scroll position
   useMapLayerSync(map, activeSection);
@@ -154,7 +156,7 @@ export function Sidebar({ origin, reverseResult, status, error, mode, onModeChan
       </div>
 
       {/* Scrollable sections */}
-      <div ref={scrollRef} className={`flex-1 overflow-y-auto overflow-x-hidden ${isMobile ? '' : ''}`}>
+      <div ref={scrollRef} className={`flex-1 overflow-x-hidden ${isMobile ? '' : 'overflow-y-auto'}`}>
         {origin && bbox ? (
           <div className="flex flex-col">
             <OverviewSection />
