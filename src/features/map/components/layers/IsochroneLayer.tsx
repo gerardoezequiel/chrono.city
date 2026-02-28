@@ -189,19 +189,21 @@ function ensureLayers(map: maplibregl.Map): boolean {
     if (!map.getLayer('study-area-mask')) {
       map.addLayer({
         id: 'study-area-mask', type: 'fill', source: MASK_SOURCE,
-        paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.72 },
+        paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.85 },
       });
     }
 
-    // Buildings promoted above mask — centroid inside study area = fully visible (not clipped)
+    // Buildings below mask — the mask hole reveals buildings inside the study area,
+    // the mask fill hides buildings outside. No feature-state dependency needed.
     if (!map.getLayer('buildings-inside-fill')) {
       map.addLayer({
         id: 'buildings-inside-fill', type: 'fill', source: 'buildings', 'source-layer': 'building',
+        layout: { visibility: 'none' },
         paint: {
-          'fill-color': '#737373',
-          'fill-opacity': ['case', ['boolean', ['feature-state', 'inside'], false], 0.7, 0],
+          'fill-color': '#525252',
+          'fill-opacity': 0.7,
         },
-      });
+      }, 'study-area-mask'); // positioned BELOW mask
     }
     if (!map.getLayer('buildings-inside-outline')) {
       map.addLayer({
@@ -355,7 +357,7 @@ export function IsochroneLayer({ map, features, origin, mode, contours, isDraggi
     setVis(map, ISO_LAYERS, showIsochrone);
   }, [map, showPedshed, showIsochrone]);
 
-  // Spotlight: mask outside study area
+  // Spotlight: mask outside study area + toggle buildings-inside-fill visibility
   // During isochrone drag, use circle geometry for instant mask feedback
   useEffect(() => {
     if (!map || !ensureLayers(map)) return;
@@ -363,14 +365,20 @@ export function IsochroneLayer({ map, features, origin, mode, contours, isDraggi
 
     if (!origin) {
       maskSrc?.setData(EMPTY_FC);
+      setVis(map, ['buildings-inside-fill'], false);
       return;
     }
 
     const effectiveMode = showPedshed ? 'ring' : mode;
     const area = getStudyAreaGeometry(origin, features, effectiveMode, contours);
-    if (!area) { maskSrc?.setData(EMPTY_FC); return; }
+    if (!area) {
+      maskSrc?.setData(EMPTY_FC);
+      setVis(map, ['buildings-inside-fill'], false);
+      return;
+    }
 
     maskSrc?.setData(makeInvertedMask(area));
+    setVis(map, ['buildings-inside-fill'], true);
   }, [map, mode, showPedshed, features, origin, contours]);
 
   // Tag buildings inside study area with feature-state for color switching.
