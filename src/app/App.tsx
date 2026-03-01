@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
-import { MapContainer, MapControls, CoordinateGrid, ScaleBar, BuildingTooltip, MapOverlays, IsochroneLayer, useMap } from '@/features/map';
+import { MapContainer, MapControls, CoordinateGrid, ScaleBar, BuildingTooltip, MapOverlays, IsochroneLayer, KonturLayer, useMap } from '@/features/map';
+import { useKonturCell } from '@/data/hooks/useKonturCell';
+import { useChronoScore } from '@/data/hooks/useChronoScore';
 import { useIsochrone } from '@/features/isochrone';
 import { useGeocoder, reverseGeocode } from '@/features/geocoder';
 import type { ReverseResult } from '@/features/geocoder';
@@ -39,6 +41,9 @@ export function App(): React.ReactElement {
   const [isDragging, setIsDragging] = useState(false);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const reverseAbortRef = useRef<AbortController | null>(null);
+  const dragThrottleRef = useRef(0);
+  const { cell: konturCell, state: konturState } = useKonturCell(mapRef.current, origin, !isDragging);
+  const chronoScore = useChronoScore(konturCell);
 
   // Derive contour array: presets [5,10,15] or custom [N]
   const contours = useMemo<number[]>(
@@ -51,9 +56,9 @@ export function App(): React.ReactElement {
     setReverseResult(null);
   }, []);
 
-  // Reverse geocode when origin changes
+  // Reverse geocode when origin changes (skip during drag)
   useEffect(() => {
-    if (!origin) { setReverseResult(null); return; }
+    if (!origin || isDragging) { if (!origin) setReverseResult(null); return; }
 
     reverseAbortRef.current?.abort();
     const controller = new AbortController();
@@ -64,14 +69,14 @@ export function App(): React.ReactElement {
     });
 
     return () => { controller.abort(); };
-  }, [origin]);
+  }, [origin, isDragging]);
 
-  // Trigger computation when origin or contours change
+  // Trigger computation when origin or contours change (skip during drag)
   useEffect(() => {
-    if (origin) {
+    if (origin && !isDragging) {
       compute(origin, contours);
     }
-  }, [origin, contours, compute]);
+  }, [origin, contours, compute, isDragging]);
 
   // Manage draggable origin marker with mode-specific icon.
   // Uses isDraggingRef to prevent marker recreation during active drag
@@ -101,28 +106,27 @@ export function App(): React.ReactElement {
       });
 
       marker.on('drag', () => {
+        // Throttle to ~100ms (10fps) — enough for smooth preview, avoids cascading 60fps state updates
+        const now = Date.now();
+        if (now - dragThrottleRef.current < 100) return;
+        dragThrottleRef.current = now;
+
         const pos = marker.getLngLat();
-        // Both modes: update origin every frame for instant visual feedback
-        // Pedshed: circles + mask + buildings react to origin
-        // Isochrone: shows pedshed circle as preview (IsochroneLayer handles this)
         setOrigin({ lng: pos.lng, lat: pos.lat });
       });
 
       marker.on('dragend', () => {
         isDraggingRef.current = false;
-        setIsDragging(false);
         const pos = marker.getLngLat();
-        const lngLat = { lng: pos.lng, lat: pos.lat };
-        setOrigin(lngLat);
-        // In isochrone mode, compute the real isochrone on drop
-        if (studyAreaMode === 'isochrone') {
-          compute(lngLat, contours);
-        }
+        // Set origin first, then isDragging=false — React 18 batches both,
+        // so effects see the final position AND isDragging=false in one render
+        setOrigin({ lng: pos.lng, lat: pos.lat });
+        setIsDragging(false);
       });
 
       markerRef.current = marker;
     }
-  }, [origin, mapRef, compute, contours, studyAreaMode]);
+  }, [origin, mapRef, studyAreaMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleClear = useCallback(() => {
     setOrigin(null);
@@ -169,10 +173,14 @@ export function App(): React.ReactElement {
         geocoder={geocoder}
         onGeocoderSelect={handleGeocoderSelect}
         map={mapRef.current}
+        konturCell={konturCell}
+        konturState={konturState}
+        chronoScore={chronoScore}
       />
 
       <div className="absolute top-0 left-[400px] right-0 bottom-0">
         <MapContainer onMapReady={onMapReady} onMapClick={handleMapClick} is3D={is3D} />
+        <KonturLayer map={mapRef.current} visible={true} />
         <IsochroneLayer
           map={mapRef.current}
           features={features}
