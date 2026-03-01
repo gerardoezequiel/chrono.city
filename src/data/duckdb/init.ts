@@ -35,7 +35,6 @@ async function initDuckDB(): Promise<duckdb.AsyncDuckDB> {
 async function getDuckDB(): Promise<duckdb.AsyncDuckDB> {
   if (dbInstance) return dbInstance;
   if (initPromise) return initPromise;
-
   initPromise = initDuckDB();
   dbInstance = await initPromise;
   return dbInstance;
@@ -88,6 +87,9 @@ export function warmup(): void {
 }
 
 let queryCounter = 0;
+
+// Eagerly start WASM download + extension install on module load
+void getDuckDB();
 
 export async function query<T>(sql: string): Promise<T[]> {
   const qid = ++queryCounter;

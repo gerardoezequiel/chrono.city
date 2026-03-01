@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react';
 import maplibregl from 'maplibre-gl';
 import { Protocol } from 'pmtiles';
 import { PMTILES_URLS, MAP_DEFAULTS } from '@/config/constants';
+import { KONTUR_TILE_URL, KONTUR_MAX_ZOOM } from '@/config/kontur';
 import type { LngLat } from '@/shared/types/geo';
 
 interface MapContainerProps {
@@ -123,6 +124,11 @@ function buildStyle(): maplibregl.StyleSpecification {
         url: `pmtiles://${PMTILES_URLS.places}`,
         maxzoom: 14,
       },
+      kontur: {
+        type: 'vector',
+        tiles: [KONTUR_TILE_URL],
+        maxzoom: KONTUR_MAX_ZOOM,
+      },
     },
     layers: [
       {
@@ -185,23 +191,43 @@ function buildStyle(): maplibregl.StyleSpecification {
           'fill-extrusion-opacity': 0.85,
         },
       },
-      // Road network overlay — hidden by default, shown when Street Network section active
+      // Road network overlay — brutalist red palette, class-based color + width
       {
         id: 'roads-overlay',
         type: 'line',
         source: 'transportation',
         'source-layer': 'segment',
         filter: ['==', ['get', 'subtype'], 'road'],
-        layout: { visibility: 'none' },
+        layout: {
+          visibility: 'none',
+          'line-cap': 'round',
+          'line-join': 'round',
+        },
         paint: {
-          'line-color': '#525252',
-          'line-width': ['match', ['get', 'class'],
-            'motorway', 2.5, 'trunk', 2, 'primary', 1.8,
-            'secondary', 1.4, 'tertiary', 1.1,
-            'residential', 0.8, 'living_street', 0.7,
-            0.5,
+          'line-color': ['match', ['get', 'class'],
+            'motorway', '#7f1d1d', 'trunk', '#991b1b',
+            'primary', '#b91c1c', 'secondary', '#dc2626',
+            'tertiary', '#ef4444', 'residential', '#f87171',
+            'living_street', '#fca5a5', 'unclassified', '#fb923c',
+            'footway', '#171717', 'pedestrian', '#171717',
+            'path', '#404040', 'cycleway', '#525252',
+            '#a3a3a3',
           ],
-          'line-opacity': 0.7,
+          'line-width': ['interpolate', ['linear'], ['zoom'],
+            10, ['match', ['get', 'class'],
+              'motorway', 2, 'trunk', 1.8, 'primary', 1.5,
+              'secondary', 1.2, 'tertiary', 1,
+              'residential', 0.6, 'living_street', 0.5,
+              0.4,
+            ],
+            16, ['match', ['get', 'class'],
+              'motorway', 8, 'trunk', 7, 'primary', 6,
+              'secondary', 4.5, 'tertiary', 3.5,
+              'residential', 2.5, 'living_street', 2,
+              1.5,
+            ],
+          ],
+          'line-opacity': 0.85,
         },
       },
       // POI dots — hidden by default, shown when Amenities section active

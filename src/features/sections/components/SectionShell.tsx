@@ -1,6 +1,9 @@
+import { memo } from 'react';
 import type { MetricDescriptor, DataState } from '@/shared/types/metrics';
+import type { ChartBinding } from '@/features/charts/types';
 import { MetricCard } from '@/shared/components/MetricCard';
 import { SkeletonMetric } from '@/shared/components/SkeletonMetric';
+import { ChartRenderer } from '@/features/charts';
 
 interface SectionShellProps {
   title: string;
@@ -14,6 +17,10 @@ interface SectionShellProps {
   narrative?: string;
   /** Map hint text shown during visual phase */
   mapHint?: string;
+  /** Chart bindings to render after resolved metrics */
+  charts?: ChartBinding[];
+  /** True when showing PMTiles preview data before DuckDB resolves */
+  isEstimate?: boolean;
   children?: React.ReactNode;
 }
 
@@ -23,7 +30,7 @@ interface SectionShellProps {
  * 2. COMPUTING — narrative + skeleton metrics + progress (1-15s)
  * 3. RESOLVED — narrative + animated metrics + charts (instant transition)
  */
-export function SectionShell({
+function SectionShellRaw({
   title,
   description,
   state,
@@ -33,6 +40,8 @@ export function SectionShell({
   queryMs,
   narrative,
   mapHint,
+  charts,
+  isEstimate,
   children,
 }: SectionShellProps): React.ReactElement {
   const hasMetrics = descriptors.length > 0;
@@ -45,12 +54,18 @@ export function SectionShell({
       <div className="flex items-baseline justify-between">
         <h3 className="font-heading text-sm font-bold text-neutral-900 uppercase tracking-tight">{title}</h3>
         <div className="flex items-center gap-2">
-          {state === 'loading' && (
+          {isEstimate && (
+            <span className="font-mono text-[11px] md:text-[8px] text-neutral-400 uppercase tracking-wider flex items-center gap-1">
+              <span className="inline-block w-1 h-1 rounded-full bg-neutral-400 animate-pulse" />
+              Preview
+            </span>
+          )}
+          {!isEstimate && state === 'loading' && (
             <span className="font-mono text-[11px] md:text-[8px] text-neutral-400 uppercase tracking-wider animate-pulse">
               Analyzing...
             </span>
           )}
-          {isResolved && queryMs != null && (
+          {isResolved && queryMs != null && !isEstimate && (
             <span className="font-mono text-[11px] md:text-[8px] text-neutral-300 tabular-nums">{queryMs.toFixed(0)}ms</span>
           )}
         </div>
@@ -98,7 +113,14 @@ export function SectionShell({
         </div>
       )}
 
+      {/* Charts — rendered after resolved metrics */}
+      {isResolved && charts && charts.length > 0 && charts.map((b) => (
+        <ChartRenderer key={b.dataKey} binding={b} data={data} />
+      ))}
+
       {children}
     </div>
   );
 }
+
+export const SectionShell = memo(SectionShellRaw);

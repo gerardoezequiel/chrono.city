@@ -5,4 +5,7 @@ export { ScaleBar } from './components/ScaleBar';
 export { BuildingTooltip } from './components/BuildingTooltip';
 export { MapOverlays } from './components/MapOverlays';
 export { IsochroneLayer } from './components/layers/IsochroneLayer';
+export { KonturLayer } from './components/layers/KonturLayer';
 export { useMap } from './hooks/useMap';
+export { useMapPreviews } from './hooks/useMapPreviews';
+export type { MapPreviews } from './hooks/useMapPreviews';

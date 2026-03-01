@@ -12,8 +12,12 @@ interface RoadClassRow {
   total_length_m: number;
 }
 
+/**
+ * Road class aggregation only. Orientation is computed from PMTiles
+ * via useMapPreviews (instant, no S3 download needed).
+ */
 export async function queryTransport(bbox: BBox): Promise<NetworkMetrics> {
-  const sql = `
+  const classSql = `
     SELECT
       class as road_class,
       COUNT(*) as segment_count,
@@ -25,13 +29,13 @@ export async function queryTransport(bbox: BBox): Promise<NetworkMetrics> {
     ORDER BY total_length_m DESC
   `;
 
-  const rows = await query<RoadClassRow>(sql);
+  const classRows = await query<RoadClassRow>(classSql);
 
   const roadClassDistribution: Record<string, number> = {};
   let totalSegments = 0;
   let totalLengthM = 0;
 
-  for (const row of rows) {
+  for (const row of classRows) {
     const cls = row.road_class ?? 'unknown';
     roadClassDistribution[cls] = Number(row.segment_count);
     totalSegments += Number(row.segment_count);

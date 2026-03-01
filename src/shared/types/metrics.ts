@@ -45,6 +45,10 @@ export interface NetworkMetrics {
   segmentCount: number;
   totalLengthKm: number;
   roadClassDistribution: Record<string, number>;
+  orientationEntropy?: number;
+  gridOrder?: number;
+  dominantBearing?: number;
+  orientation?: { bins: number[]; dominantBearing: number };
 }
 
 export interface AmenityMetrics {
@@ -53,10 +57,22 @@ export interface AmenityMetrics {
   topCategories: Array<{ category: string; count: number }>;
 }
 
+// ─── Overview metrics (Kontur H3) ───────────────────────────
+
+export interface OverviewMetrics {
+  population: number;
+  builtUpFraction: number;
+  greenCover: number;
+  poiCount: number;
+  roadLengthKm: number;
+  informRisk: number | null;
+  nightLights: number | null;
+}
+
 // ─── Type-safe section → metrics mapping ────────────────────
 
 export interface SectionMetricsMap {
-  overview: Record<string, never>;
+  overview: OverviewMetrics;
   buildings: BuildingMetrics;
   network: NetworkMetrics;
   amenities: AmenityMetrics;

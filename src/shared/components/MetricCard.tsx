@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { MetricUnit } from '@/shared/types/metrics';
 import { formatMetric } from '@/shared/utils/format';
 import { useCountUp } from '@/shared/hooks/useCountUp';
@@ -11,7 +12,7 @@ interface MetricCardProps {
   instant?: boolean;
 }
 
-export function MetricCard({ label, value, unit, precision, instant }: MetricCardProps): React.ReactElement {
+function MetricCardRaw({ label, value, unit, precision, instant }: MetricCardProps): React.ReactElement {
   const animated = useCountUp(instant ? null : value);
   const displayValue = instant ? value : animated;
   const formatted = formatMetric(displayValue, unit, precision);
@@ -27,3 +28,5 @@ export function MetricCard({ label, value, unit, precision, instant }: MetricCar
     </div>
   );
 }
+
+export const MetricCard = memo(MetricCardRaw);

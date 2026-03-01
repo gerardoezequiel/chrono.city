@@ -34,10 +34,17 @@ export function useSectionData<T>(
       return;
     }
 
+    // Skip query when disabled (section not yet scrolled to, or dragging)
+    if (!enabled) return;
+
     const config = getSectionConfig(sectionId);
     if (!config?.query) return;
 
     const key = cacheKey(bbox, sectionId);
+
+    // Invalidate any in-flight requests BEFORE checking caches,
+    // so a stale async response can't overwrite a synchronous cache hit.
+    const requestId = ++abortRef.current;
 
     // Layer 1: Memory cache (instant)
     const cached = memoryCache.get<T>(key);
@@ -49,8 +56,6 @@ export function useSectionData<T>(
       console.debug(`[${sectionId}] memory cache HIT`);
       return;
     }
-
-    const requestId = ++abortRef.current;
 
     setState('loading');
     setError(null);

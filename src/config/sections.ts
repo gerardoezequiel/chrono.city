@@ -1,9 +1,11 @@
 import type { BBox } from '@/shared/types/geo';
 import type { SectionId, MetricDescriptor } from '@/shared/types/metrics';
+import type { ChartBinding } from '@/features/charts/types';
 import { queryBuildings } from '@/data/duckdb/queries/buildings.sql';
 import { queryTransport } from '@/data/duckdb/queries/transport.sql';
 import { queryPlaces } from '@/data/duckdb/queries/places.sql';
-import { BUILDING_METRICS, NETWORK_METRICS, AMENITY_METRICS } from '@/config/metrics';
+import { OVERVIEW_METRICS, BUILDING_METRICS, NETWORK_METRICS, AMENITY_METRICS } from '@/config/metrics';
+import { OVERVIEW_CHARTS, BUILDING_CHARTS, NETWORK_CHARTS, AMENITY_CHARTS } from '@/config/charts';
 
 /** Map layer IDs that should highlight when this section is active */
 export interface SectionLayers {
@@ -19,6 +21,7 @@ export interface SectionConfig {
   description: string;
   query: ((bbox: BBox) => Promise<unknown>) | null;
   metrics: MetricDescriptor[];
+  charts: ChartBinding[];
   /** Map layers controlled by this section's scroll position */
   layers: SectionLayers;
 }
@@ -29,7 +32,8 @@ export const SECTION_REGISTRY: SectionConfig[] = [
     name: 'Overview',
     description: 'Key walkability metrics at a glance',
     query: null,
-    metrics: [],
+    metrics: OVERVIEW_METRICS,
+    charts: OVERVIEW_CHARTS,
     layers: { show: [], emphasize: [] },
   },
   {
@@ -38,6 +42,7 @@ export const SECTION_REGISTRY: SectionConfig[] = [
     description: 'Morphology, density, and urban grain',
     query: (bbox: BBox) => queryBuildings(bbox) as Promise<unknown>,
     metrics: BUILDING_METRICS,
+    charts: BUILDING_CHARTS,
     layers: {
       show: [],
       emphasize: ['buildings-fill', 'buildings-outline'],
@@ -49,6 +54,7 @@ export const SECTION_REGISTRY: SectionConfig[] = [
     description: 'Connectivity, road classes, and orientation',
     query: (bbox: BBox) => queryTransport(bbox) as Promise<unknown>,
     metrics: NETWORK_METRICS,
+    charts: NETWORK_CHARTS,
     layers: {
       show: ['roads-overlay'],
       emphasize: [],
@@ -60,6 +66,7 @@ export const SECTION_REGISTRY: SectionConfig[] = [
     description: '15-minute city categories and accessibility',
     query: (bbox: BBox) => queryPlaces(bbox) as Promise<unknown>,
     metrics: AMENITY_METRICS,
+    charts: AMENITY_CHARTS,
     layers: {
       show: ['places-dots'],
       emphasize: [],

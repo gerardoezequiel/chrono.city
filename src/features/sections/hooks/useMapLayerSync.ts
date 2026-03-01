@@ -3,10 +3,13 @@ import type maplibregl from 'maplibre-gl';
 import type { SectionId } from '@/shared/types/metrics';
 import { getSectionConfig, getAllSectionLayerIds } from '@/config/sections';
 
+const BUILDING_LAYERS = ['buildings-fill', 'buildings-outline'];
+
 /**
  * Syncs map layer visibility and emphasis with the active sidebar section.
  * - Turns on layers owned by the active section
  * - Turns off layers owned by other sections
+ * - Hides buildings when a non-building section has its own layers
  * - Adjusts building opacity when buildings section is active
  */
 export function useMapLayerSync(
@@ -23,7 +26,7 @@ export function useMapLayerSync(
       const allToggleLayers = getAllSectionLayerIds();
       const activeConfig = getSectionConfig(activeSection);
 
-      // Hide all section-owned layers
+      // Hide all section-owned overlay layers
       for (const layerId of allToggleLayers) {
         if (map.getLayer(layerId)) {
           map.setLayoutProperty(layerId, 'visibility', 'none');
@@ -39,8 +42,22 @@ export function useMapLayerSync(
         }
       }
 
-      // Emphasize buildings when buildings section active
+      // Building visibility: hide when network or amenities section is active
+      // (their dedicated layers replace the buildings view)
+      const hasOwnLayers = (activeConfig?.layers.show.length ?? 0) > 0;
       const buildingsActive = activeSection === 'buildings';
+
+      for (const layerId of BUILDING_LAYERS) {
+        if (map.getLayer(layerId)) {
+          map.setLayoutProperty(
+            layerId,
+            'visibility',
+            hasOwnLayers && !buildingsActive ? 'none' : 'visible',
+          );
+        }
+      }
+
+      // Emphasize buildings when buildings section is specifically active
       if (map.getLayer('buildings-fill')) {
         map.setPaintProperty('buildings-fill', 'fill-opacity', [
           'case',
