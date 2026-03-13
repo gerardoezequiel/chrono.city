@@ -15,8 +15,15 @@ interface BuildingRow {
   avg_floors: number | null;
 }
 
+interface HeightBinRow {
+  height_bin: string;
+  count: number;
+}
+
 export async function queryBuildings(bbox: BBox): Promise<BuildingMetrics> {
-  const sql = `
+  const pred = BBOX_PRED(bbox);
+
+  const statsSql = `
     SELECT
       COUNT(*) as building_count,
       SUM(ST_Area_Spheroid(geometry)) as total_footprint_area_m2,
@@ -25,11 +32,37 @@ export async function queryBuildings(bbox: BBox): Promise<BuildingMetrics> {
       AVG(height) as avg_height_m,
       AVG(num_floors) as avg_floors
     FROM read_parquet('${S3_PATHS.buildings}', hive_partitioning=1)
-    WHERE ${BBOX_PRED(bbox)}
+    WHERE ${pred}
   `;
 
-  const rows = await query<BuildingRow>(sql);
-  const r = rows[0];
+  const heightSql = `
+    SELECT
+      CASE
+        WHEN height < 5 THEN '0-5m'
+        WHEN height < 10 THEN '5-10m'
+        WHEN height < 20 THEN '10-20m'
+        WHEN height < 40 THEN '20-40m'
+        WHEN height < 80 THEN '40-80m'
+        ELSE '80m+'
+      END as height_bin,
+      COUNT(*) as count
+    FROM read_parquet('${S3_PATHS.buildings}', hive_partitioning=1)
+    WHERE ${pred} AND height IS NOT NULL
+    GROUP BY height_bin
+    ORDER BY MIN(height)
+  `;
+
+  const [statsRows, heightRows] = await Promise.all([
+    query<BuildingRow>(statsSql),
+    query<HeightBinRow>(heightSql),
+  ]);
+
+  const r = statsRows[0];
+
+  const heightDistribution: Record<string, number> = {};
+  for (const row of heightRows) {
+    heightDistribution[row.height_bin] = Number(row.count);
+  }
 
   if (!r || r.building_count === 0) {
     return {
@@ -40,6 +73,7 @@ export async function queryBuildings(bbox: BBox): Promise<BuildingMetrics> {
       avgHeightM: null,
       avgFloors: null,
       heightCoverage: 0,
+      heightDistribution,
     };
   }
 
@@ -51,5 +85,6 @@ export async function queryBuildings(bbox: BBox): Promise<BuildingMetrics> {
     avgHeightM: r.avg_height_m != null ? Number(r.avg_height_m) : null,
     avgFloors: r.avg_floors != null ? Number(r.avg_floors) : null,
     heightCoverage: r.building_count > 0 ? Number(r.buildings_with_height) / Number(r.building_count) : 0,
+    heightDistribution,
   };
 }

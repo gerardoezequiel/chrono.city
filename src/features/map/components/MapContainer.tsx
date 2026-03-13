@@ -240,7 +240,34 @@ function buildStyle(): maplibregl.StyleSpecification {
         layout: { visibility: 'none' },
         paint: {
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 2, 16, 4],
-          'circle-color': '#737373',
+          'circle-color': [
+            'match',
+            ['get', '@category'],
+            // Grocery
+            'food', '#16a34a', 'supermarket', '#16a34a', 'meat_shop', '#16a34a',
+            'seafood_market', '#16a34a', 'beverage_store', '#16a34a',
+            // Healthcare
+            'hospital', '#dc2626', 'doctor', '#dc2626', 'dentist', '#dc2626',
+            'pharmacy', '#dc2626', 'clinic', '#dc2626',
+            // Education
+            'school', '#2563eb', 'college_university', '#2563eb',
+            'kindergarten', '#2563eb', 'library', '#2563eb',
+            // Transport
+            'airport', '#7c3aed', 'transportation', '#7c3aed',
+            // Green Space
+            'park', '#15803d', 'botanical_garden', '#15803d',
+            'nature_reserve', '#15803d', 'trail', '#15803d', 'beach', '#15803d',
+            // Food & Drink
+            'restaurant', '#ea580c', 'cafe', '#ea580c', 'bar', '#ea580c',
+            // Sports & Rec
+            'sports_and_recreation_venue', '#0891b2',
+            'sports_and_fitness_instruction', '#0891b2',
+            // Culture
+            'museum', '#c026d3', 'cinema', '#c026d3',
+            'performing_arts', '#c026d3', 'art_gallery', '#c026d3',
+            // Default
+            '#a3a3a3',
+          ],
           'circle-stroke-color': '#ffffff',
           'circle-stroke-width': 0.5,
           'circle-opacity': 0.8,

@@ -39,6 +39,7 @@ export interface BuildingMetrics {
   avgHeightM: number | null;
   avgFloors: number | null;
   heightCoverage: number;
+  heightDistribution: Record<string, number>;
 }
 
 export interface NetworkMetrics {
@@ -58,6 +59,12 @@ export interface AmenityMetrics {
   poiCount: number;
   categoryDistribution: Record<string, number>;
   topCategories: Array<{ category: string; count: number }>;
+  categoryCount: number;
+  fifteenMinCompleteness: number;
+  servicePresence: Record<string, boolean>;
+  serviceGroupCounts: Record<string, number>;
+  poiDiversity: number;
+  socialPlaces: number;
 }
 
 // ─── Overview metrics (Kontur H3) ───────────────────────────
@@ -72,6 +79,17 @@ export interface OverviewMetrics {
   nightLights: number | null;
 }
 
+export interface WalkabilityMetrics {
+  intersectionCount: number;
+  intersectionDensity: number;
+  deadEndCount: number;
+  deadEndRatio: number;
+  activeTransportShare: number;
+  totalNodes: number;
+  segmentCount: number;
+  totalLengthKm: number;
+}
+
 // ─── Type-safe section → metrics mapping ────────────────────
 
 export interface SectionMetricsMap {
@@ -79,6 +97,7 @@ export interface SectionMetricsMap {
   buildings: BuildingMetrics;
   network: NetworkMetrics;
   amenities: AmenityMetrics;
+  walkability: WalkabilityMetrics;
 }
 
 export type SectionId = keyof SectionMetricsMap;

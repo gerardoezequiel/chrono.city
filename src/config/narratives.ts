@@ -26,4 +26,8 @@ export const SECTION_NARRATIVES: Record<SectionId, SectionNarrative> = {
     intro: 'The 15-minute city asks: can you reach daily essentials on foot? Groceries, schools, healthcare, transit — diversity of services matters more than raw count.',
     mapHint: 'Dots represent points of interest. Clusters indicate commercial activity. Gaps may signal service deserts.',
   },
+  walkability: {
+    intro: 'Walkability is shaped by intersection density, dead-end prevalence, and pedestrian infrastructure. More intersections mean more route choices. Fewer dead ends mean fewer forced detours.',
+    mapHint: 'Observe the street pattern. Dense grids with short blocks score highest. Cul-de-sac subdivisions score lowest.',
+  },
 };
