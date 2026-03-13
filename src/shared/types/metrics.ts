@@ -49,6 +49,9 @@ export interface NetworkMetrics {
   gridOrder?: number;
   dominantBearing?: number;
   orientation?: { bins: number[]; dominantBearing: number };
+  activeTransportShare?: number;
+  intersectionDensity?: number;
+  deadEndRatio?: number;
 }
 
 export interface AmenityMetrics {

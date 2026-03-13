@@ -23,6 +23,9 @@ export const NETWORK_METRICS: MetricDescriptor[] = [
   { key: 'totalLengthKm', label: 'Network Length', unit: 'decimal', description: 'Total road network length in km', precision: 1 },
   { key: 'orientationEntropy', label: 'Grid Entropy', unit: 'ratio', description: 'Street orientation uniformity (0=grid, 1=random)', precision: 2 },
   { key: 'gridOrder', label: 'Grid Order', unit: 'ratio', description: 'Directional concentration of street network', precision: 2 },
+  { key: 'activeTransportShare', label: 'Active Transport', unit: 'percentage', description: 'Length share of footway, cycleway, and pedestrian roads', precision: 0 },
+  { key: 'intersectionDensity', label: 'Intersections', unit: 'per_km2', description: 'Network intersections (3+ roads meeting) per km²', precision: 0 },
+  { key: 'deadEndRatio', label: 'Dead-End Ratio', unit: 'percentage', description: 'Proportion of dead-end connectors (cul-de-sacs)', precision: 0 },
 ];
 
 export const AMENITY_METRICS: MetricDescriptor[] = [
