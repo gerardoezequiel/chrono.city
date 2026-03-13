@@ -13,9 +13,15 @@ export const OVERVIEW_METRICS: MetricDescriptor[] = [
 export const BUILDING_METRICS: MetricDescriptor[] = [
   { key: 'buildingCount', label: 'Buildings', unit: 'integer', description: 'Total building footprints in area' },
   { key: 'totalFootprintAreaM2', label: 'Total Footprint', unit: 'ha', description: 'Sum of all building ground-floor areas' },
-  { key: 'avgFootprintAreaM2', label: 'Avg Footprint', unit: 'm2', description: 'Mean building ground-floor area' },
+  { key: 'gsi', label: 'Ground Coverage', unit: 'ratio', description: 'Building footprint / viewport area (GSI)', precision: 2 },
+  { key: 'fsi', label: 'Floor Intensity', unit: 'ratio', description: 'Total floor area / viewport area (FSI)', precision: 2 },
+  { key: 'osr', label: 'Open Space Ratio', unit: 'ratio', description: 'Available open space per m² of floor area', precision: 2 },
+  { key: 'compactness', label: 'Compactness', unit: 'ratio', description: 'Avg shape efficiency (1.0=circle)', precision: 2 },
+  { key: 'urbanGrain', label: 'Urban Grain', unit: 'm2', description: 'Median building footprint area' },
+  { key: 'fractalDimension', label: 'Complexity', unit: 'ratio', description: 'Geometric complexity (1.0-2.0)', precision: 2 },
   { key: 'avgHeightM', label: 'Avg Height', unit: 'decimal', description: 'Mean building height (where available)', precision: 1 },
-  { key: 'heightCoverage', label: 'Height Data', unit: 'percentage', description: 'Proportion of buildings with height data' },
+  { key: 'heightCoverage', label: 'Height Data', unit: 'percentage', description: 'Buildings with height data' },
+  { key: 'fabricScore', label: 'Fabric Score', unit: 'score', description: 'Composite urban fabric quality (0-100)' },
 ];
 
 export const NETWORK_METRICS: MetricDescriptor[] = [

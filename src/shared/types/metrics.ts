@@ -39,6 +39,18 @@ export interface BuildingMetrics {
   avgHeightM: number | null;
   avgFloors: number | null;
   heightCoverage: number;
+  // Core indicators
+  viewportAreaM2: number;
+  gsi: number;
+  fsi: number | null;
+  osr: number | null;
+  compactness: number;
+  urbanGrain: number;
+  fractalDimension: number | null;
+  fabricScore: number | null;
+  // Chart data
+  footprintDistribution: number[];
+  subtypeDistribution: Record<string, number>;
 }
 
 export interface NetworkMetrics {

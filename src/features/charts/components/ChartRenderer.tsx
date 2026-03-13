@@ -3,6 +3,7 @@ import type { ChartBinding, ChartProps } from '../types';
 import { MiniBar } from './MiniBar';
 import { MiniDonut } from './MiniDonut';
 import { MiniRadar } from './MiniRadar';
+import { DistributionChart } from './DistributionChart';
 import { ServiceChecklist } from './ServiceChecklist';
 import { OrientationRose } from './OrientationRose';
 
@@ -18,6 +19,7 @@ function RoseAdapter({ data }: ChartProps): React.ReactElement | null {
 
 const CHART_COMPONENTS: Record<string, ChartComponent> = {
   bar: MiniBar,
+  distribution: DistributionChart,
   donut: MiniDonut,
   radar: MiniRadar,
   checklist: ServiceChecklist,

@@ -1,4 +1,4 @@
-export type ChartType = 'bar' | 'donut' | 'rose' | 'radar' | 'checklist';
+export type ChartType = 'bar' | 'distribution' | 'donut' | 'rose' | 'radar' | 'checklist';
 
 export interface ChartBinding {
   type: ChartType;
@@ -13,6 +13,7 @@ export interface ChartOptions {
   colorScheme?: string[];
   /** Per-label color map — turns chart into a legend */
   colorMap?: Record<string, string>;
+  logScale?: boolean;
 }
 
 /** Common props accepted by all chart components */

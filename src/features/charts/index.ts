@@ -1,5 +1,6 @@
 export { OrientationRose } from './components/OrientationRose';
 export { ChartRenderer } from './components/ChartRenderer';
+export { DistributionChart } from './components/DistributionChart';
 export { MiniBar } from './components/MiniBar';
 export { MiniDonut } from './components/MiniDonut';
 export { MiniRadar } from './components/MiniRadar';

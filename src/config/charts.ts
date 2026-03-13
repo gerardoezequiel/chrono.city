@@ -19,7 +19,10 @@ export const ROAD_CLASS_COLORS: Record<string, string> = {
 
 export const OVERVIEW_CHARTS: ChartBinding[] = [];
 
-export const BUILDING_CHARTS: ChartBinding[] = [];
+export const BUILDING_CHARTS: ChartBinding[] = [
+  { type: 'distribution', dataKey: 'footprintDistribution', title: 'Footprint Sizes' },
+  { type: 'bar', dataKey: 'subtypeDistribution', title: 'Building Types' },
+];
 
 export const NETWORK_CHARTS: ChartBinding[] = [
   {
