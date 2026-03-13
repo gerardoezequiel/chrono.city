@@ -55,27 +55,34 @@ function computeBuildingPreview(features: GeoJSON.Feature[]): Partial<BuildingMe
   };
 }
 
+const ACTIVE_CLASSES = new Set(['footway', 'pedestrian', 'path', 'cycleway', 'steps', 'living_street']);
+
 function computeNetworkPreview(features: GeoJSON.Feature[]): Partial<NetworkMetrics> {
   const unique = dedup(features);
   const classDist: Record<string, number> = {};
   let totalLengthM = 0;
+  let activeLengthM = 0;
 
   for (const f of unique) {
     const cls = (f.properties?.class as string) ?? 'unknown';
     classDist[cls] = (classDist[cls] ?? 0) + 1;
 
+    let segLengthM = 0;
     if (f.geometry.type === 'LineString') {
       const coords = f.geometry.coordinates;
       for (let i = 0; i < coords.length - 1; i++) {
-        totalLengthM += distanceM(coords[i] as [number, number], coords[i + 1] as [number, number]);
+        segLengthM += distanceM(coords[i] as [number, number], coords[i + 1] as [number, number]);
       }
     } else if (f.geometry.type === 'MultiLineString') {
       for (const line of f.geometry.coordinates) {
         for (let i = 0; i < line.length - 1; i++) {
-          totalLengthM += distanceM(line[i] as [number, number], line[i + 1] as [number, number]);
+          segLengthM += distanceM(line[i] as [number, number], line[i + 1] as [number, number]);
         }
       }
     }
+
+    totalLengthM += segLengthM;
+    if (ACTIVE_CLASSES.has(cls)) activeLengthM += segLengthM;
   }
 
   const orientation = computeOrientation(unique);
@@ -84,6 +91,7 @@ function computeNetworkPreview(features: GeoJSON.Feature[]): Partial<NetworkMetr
     segmentCount: unique.length,
     roadClassDistribution: classDist,
     totalLengthKm: totalLengthM / 1000,
+    activeTransportShare: totalLengthM > 0 ? activeLengthM / totalLengthM : 0,
     orientationEntropy: orientation.entropy,
     gridOrder: orientation.gridOrder,
     dominantBearing: orientation.dominantBearing,
