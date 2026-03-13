@@ -80,8 +80,8 @@ function DistributionChartRaw({ data, options }: ChartProps): React.ReactElement
     });
   }
 
-  // Y-axis ticks
-  const yTicks = [0, Math.round(maxCount / 2), maxCount];
+  // Y-axis ticks (deduplicate to avoid duplicate React keys)
+  const yTicks = [...new Set([0, Math.round(maxCount / 2), maxCount])];
 
   return (
     <svg width="100%" viewBox={`0 0 ${totalW} ${totalH}`} preserveAspectRatio="xMinYMin meet" className="mt-2">
