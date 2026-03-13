@@ -27,4 +27,16 @@ export const NETWORK_METRICS: MetricDescriptor[] = [
 
 export const AMENITY_METRICS: MetricDescriptor[] = [
   { key: 'poiCount', label: 'Places', unit: 'integer', description: 'Total points of interest' },
+  { key: 'categoryCount', label: 'Categories', unit: 'integer', description: 'Distinct place categories' },
+  { key: 'fifteenMinCompleteness', label: '15-Min Score', unit: 'score', description: 'Essential service groups present (0-8)' },
+  { key: 'poiDiversity', label: 'Diversity', unit: 'ratio', description: 'Category diversity (Shannon entropy)', precision: 2 },
+  { key: 'socialPlaces', label: 'Social Places', unit: 'integer', description: 'Third places: cafes, bars, libraries, parks' },
+];
+
+export const WALKABILITY_METRICS: MetricDescriptor[] = [
+  { key: 'intersectionCount', label: 'Intersections', unit: 'integer', description: 'Nodes where 3+ roads meet' },
+  { key: 'intersectionDensity', label: 'Intersection Density', unit: 'per_km2', description: 'Intersections per km² (>100 = walkable)', precision: 0 },
+  { key: 'deadEndRatio', label: 'Dead-End Ratio', unit: 'percentage', description: 'Fraction of nodes that are cul-de-sacs' },
+  { key: 'activeTransportShare', label: 'Active Transport', unit: 'percentage', description: 'Footway + cycleway share of network' },
+  { key: 'totalLengthKm', label: 'Network Length', unit: 'decimal', description: 'Total road network length in km', precision: 1 },
 ];

@@ -4,8 +4,9 @@ import type { ChartBinding } from '@/features/charts/types';
 import { queryBuildings } from '@/data/duckdb/queries/buildings.sql';
 import { queryTransport } from '@/data/duckdb/queries/transport.sql';
 import { queryPlaces } from '@/data/duckdb/queries/places.sql';
-import { OVERVIEW_METRICS, BUILDING_METRICS, NETWORK_METRICS, AMENITY_METRICS } from '@/config/metrics';
-import { OVERVIEW_CHARTS, BUILDING_CHARTS, NETWORK_CHARTS, AMENITY_CHARTS } from '@/config/charts';
+import { queryWalkability } from '@/data/duckdb/queries/walkability.sql';
+import { OVERVIEW_METRICS, BUILDING_METRICS, NETWORK_METRICS, AMENITY_METRICS, WALKABILITY_METRICS } from '@/config/metrics';
+import { OVERVIEW_CHARTS, BUILDING_CHARTS, NETWORK_CHARTS, AMENITY_CHARTS, WALKABILITY_CHARTS } from '@/config/charts';
 
 /** Map layer IDs that should highlight when this section is active */
 export interface SectionLayers {
@@ -69,6 +70,18 @@ export const SECTION_REGISTRY: SectionConfig[] = [
     charts: AMENITY_CHARTS,
     layers: {
       show: ['places-dots'],
+      emphasize: [],
+    },
+  },
+  {
+    id: 'walkability',
+    name: 'Walkability',
+    description: 'Intersection density, dead ends, and pedestrian infrastructure',
+    query: (bbox: BBox) => queryWalkability(bbox) as Promise<unknown>,
+    metrics: WALKABILITY_METRICS,
+    charts: WALKABILITY_CHARTS,
+    layers: {
+      show: ['roads-overlay'],
       emphasize: [],
     },
   },
