@@ -34,3 +34,8 @@ export const NETWORK_CHARTS: ChartBinding[] = [
 export const AMENITY_CHARTS: ChartBinding[] = [
   { type: 'bar', dataKey: 'categoryDistribution', title: 'Place Categories' },
 ];
+
+export const WALKABILITY_CHARTS: ChartBinding[] = [
+  { type: 'checklist', dataKey: 'serviceCoverage', title: '15-Minute City Services' },
+  { type: 'bar', dataKey: 'serviceCount', title: 'Service Availability' },
+];

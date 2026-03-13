@@ -26,4 +26,8 @@ export const SECTION_NARRATIVES: Record<SectionId, SectionNarrative> = {
     intro: 'The 15-minute city asks: can you reach daily essentials on foot? Groceries, schools, healthcare, transit — diversity of services matters more than raw count.',
     mapHint: 'Dots represent points of interest. Clusters indicate commercial activity. Gaps may signal service deserts.',
   },
+  walkability: {
+    intro: 'A truly walkable neighborhood provides all daily essentials within a 15-minute walk. Six service groups — food, health, education, shopping, leisure, and civic — define completeness.',
+    mapHint: 'Each service group is checked against nearby POIs. Green checks mean coverage. Missing groups reveal urban gaps.',
+  },
 };

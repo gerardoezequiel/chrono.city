@@ -39,6 +39,16 @@ export interface BuildingMetrics {
   avgHeightM: number | null;
   avgFloors: number | null;
   heightCoverage: number;
+  /** Ground Space Index: footprint area / study area (0–1) */
+  gsi?: number;
+  /** Floor Space Index: total floor area / study area */
+  fsi?: number;
+  /** Open Space Ratio: (1 - GSI) / FSI */
+  osr?: number | null;
+  /** Building Compactness: avg (4*PI*area / perimeter²), 0–1 */
+  compactness?: number | null;
+  /** Median building footprint area in m² (urban grain) */
+  medianFootprintM2?: number | null;
 }
 
 export interface NetworkMetrics {
@@ -49,6 +59,15 @@ export interface NetworkMetrics {
   gridOrder?: number;
   dominantBearing?: number;
   orientation?: { bins: number[]; dominantBearing: number };
+  /** Advanced metrics (Phase 4) */
+  intersectionDensity?: number;
+  intersectionCount?: number;
+  deadEndRatio?: number;
+  activeTransportShare?: number;
+  /** Beta index: edges / nodes — higher = more connected */
+  betaIndex?: number;
+  /** Gamma index: edges / max possible edges (0–1) */
+  gammaIndex?: number;
 }
 
 export interface AmenityMetrics {
@@ -69,6 +88,23 @@ export interface OverviewMetrics {
   nightLights: number | null;
 }
 
+// ─── Walkability metrics (Phase 7) ──────────────────────────
+
+export interface WalkabilityMetrics {
+  /** Count of distinct 15-min city service groups present */
+  fifteenMinCompleteness: number;
+  /** Total possible service groups */
+  totalServiceGroups: number;
+  /** Per-group boolean coverage */
+  serviceCoverage: Record<string, boolean>;
+  /** Per-group POI count */
+  serviceCount: Record<string, number>;
+  /** Third places (cafe, bar, library, park) per hectare */
+  socialDensity: number;
+  /** Total POI count */
+  totalPoi: number;
+}
+
 // ─── Type-safe section → metrics mapping ────────────────────
 
 export interface SectionMetricsMap {
@@ -76,6 +112,7 @@ export interface SectionMetricsMap {
   buildings: BuildingMetrics;
   network: NetworkMetrics;
   amenities: AmenityMetrics;
+  walkability: WalkabilityMetrics;
 }
 
 export type SectionId = keyof SectionMetricsMap;

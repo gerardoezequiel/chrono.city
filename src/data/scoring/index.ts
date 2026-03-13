@@ -39,6 +39,9 @@ export { normalize, ALL_NORMS } from './normalize';
 // Kontur bridge
 export { konturToIndicators, konturSourceConfig, KONTUR_TILE_URL, KONTUR_LAYER_NAME } from './kontur';
 
+// DuckDB bridge
+export { sectionDataToIndicators } from './duckdb-bridge';
+
 // Utilities
 export { computeGrade, gradeLabel } from './utils';
 

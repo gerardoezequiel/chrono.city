@@ -1,11 +1,11 @@
 import { useRef } from 'react';
 import type maplibregl from 'maplibre-gl';
-import type { LngLat, StudyAreaMode } from '@/shared/types/geo';
+import type { LngLat } from '@/shared/types/geo';
 import type { DataState } from '@/shared/types/metrics';
 import type { KonturH3Properties } from '@/shared/types/kontur';
-import type { ReverseResult } from '@/features/geocoder';
 import type { ChronoScore } from '@/data/scoring/types';
 import type { MapPreviews } from '@/features/map';
+import { useSectionStore } from '@/state/section-store';
 import { LocationBar } from './LocationBar';
 import { SectionList } from './SectionList';
 import { ModeControls } from './ModeControls';
@@ -28,14 +28,8 @@ interface GeocoderState {
 }
 
 interface SidebarProps {
-  origin: LngLat | null;
-  reverseResult: ReverseResult | null;
   status: IsochroneStatus;
   error: string | null;
-  mode: StudyAreaMode;
-  onModeChange: (mode: StudyAreaMode) => void;
-  customMinutes: number | null;
-  onCustomMinutesChange: (value: number | null) => void;
   onClear: () => void;
   geocoder: GeocoderState;
   onGeocoderSelect: (lngLat: LngLat, displayName: string) => void;
@@ -43,14 +37,22 @@ interface SidebarProps {
   konturCell: KonturH3Properties | null;
   konturState: DataState;
   chronoScore: ChronoScore | null;
-  isDragging: boolean;
   previews: MapPreviews;
   isMobile?: boolean;
 }
 
-export function Sidebar({ origin, reverseResult, status, error, mode, onModeChange, customMinutes, onCustomMinutesChange, onClear, geocoder, onGeocoderSelect, map, konturCell, konturState, chronoScore, isDragging, previews, isMobile }: SidebarProps): React.ReactElement {
+export function Sidebar({ status, error, onClear, geocoder, onGeocoderSelect, map, konturCell, konturState, chronoScore, previews, isMobile }: SidebarProps): React.ReactElement {
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeSection = useScrollSpy(scrollRef);
+
+  // Read from Zustand stores instead of props
+  const origin = useSectionStore((s) => s.origin);
+  const reverseResult = useSectionStore((s) => s.reverseResult);
+  const mode = useSectionStore((s) => s.studyAreaMode);
+  const setStudyAreaMode = useSectionStore((s) => s.setStudyAreaMode);
+  const customMinutes = useSectionStore((s) => s.customMinutes);
+  const setCustomMinutes = useSectionStore((s) => s.setCustomMinutes);
+  const isDragging = useSectionStore((s) => s.isDragging);
 
   useMapLayerSync(map, activeSection);
 
@@ -92,9 +94,9 @@ export function Sidebar({ origin, reverseResult, status, error, mode, onModeChan
 
       <ModeControls
         mode={mode}
-        onModeChange={onModeChange}
+        onModeChange={setStudyAreaMode}
         customMinutes={customMinutes}
-        onCustomMinutesChange={onCustomMinutesChange}
+        onCustomMinutesChange={setCustomMinutes}
       />
 
       {/* Scrollable sections */}

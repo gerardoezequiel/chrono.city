@@ -1,16 +1,17 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
 import { MapContainer, MapControls, CoordinateGrid, ScaleBar, BuildingTooltip, MapOverlays, IsochroneLayer, KonturLayer, useMap, useMapPreviews } from '@/features/map';
 import { useKonturCell } from '@/data/hooks/useKonturCell';
 import { useChronoScore } from '@/data/hooks/useChronoScore';
 import { useIsochrone } from '@/features/isochrone';
 import { useGeocoder, reverseGeocode } from '@/features/geocoder';
-import type { ReverseResult } from '@/features/geocoder';
 import { Sidebar } from '@/features/sections';
 import type { LngLat, StudyAreaMode } from '@/shared/types/geo';
 import { ISOCHRONE_PRESETS } from '@/config/constants';
 import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { MobileSheet } from '@/shared/components/MobileSheet';
+import { useMapStore } from '@/state/map-store';
+import { useSectionStore } from '@/state/section-store';
 
 const ISOCHRONE_SVG = `<svg width="22" height="22" viewBox="0 0 16 16" fill="none">
   <path d="M8 5.5C7 5.3 6 6 5.8 7C5.6 8 6.3 8.8 7 9.3C7.7 9.8 8.5 10 9.2 9.5C10 9 10.5 8 10.3 7C10.1 6 9 5.7 8 5.5Z" stroke="currentColor" stroke-width="1.2"/>
@@ -35,18 +36,31 @@ export function App(): React.ReactElement {
   const { mapRef, onMapReady } = useMap();
   const { features, status, error, compute, clear } = useIsochrone();
   const geocoder = useGeocoder();
-  const [origin, setOrigin] = useState<LngLat | null>(null);
-  const [reverseResult, setReverseResult] = useState<ReverseResult | null>(null);
-  const [studyAreaMode, setStudyAreaMode] = useState<StudyAreaMode>('ring');
-  const [customMinutes, setCustomMinutes] = useState<number | null>(null); // null = presets
-  const [is3D, setIs3D] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+
+  // Zustand stores
+  const is3D = useMapStore((s) => s.is3D);
+  const toggleIs3D = useMapStore((s) => s.toggleIs3D);
+  const setIsochroneFeatures = useMapStore((s) => s.setIsochroneFeatures);
+
+  const origin = useSectionStore((s) => s.origin);
+  const setOrigin = useSectionStore((s) => s.setOrigin);
+  const setReverseResult = useSectionStore((s) => s.setReverseResult);
+  const studyAreaMode = useSectionStore((s) => s.studyAreaMode);
+  const customMinutes = useSectionStore((s) => s.customMinutes);
+  const isDragging = useSectionStore((s) => s.isDragging);
+  const setIsDragging = useSectionStore((s) => s.setIsDragging);
+
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const reverseAbortRef = useRef<AbortController | null>(null);
   const dragThrottleRef = useRef(0);
   const { cell: konturCell, state: konturState } = useKonturCell(mapRef.current, origin, !isDragging);
   const chronoScore = useChronoScore(konturCell);
   const previews = useMapPreviews(mapRef.current, origin);
+
+  // Sync isochrone features to store (cross-section bridge)
+  useEffect(() => {
+    setIsochroneFeatures(features);
+  }, [features, setIsochroneFeatures]);
 
   // Derive contour array: presets [5,10,15] or custom [N]
   const contours = useMemo<number[]>(
@@ -57,7 +71,7 @@ export function App(): React.ReactElement {
   const handleMapClick = useCallback((lngLat: LngLat) => {
     setOrigin(lngLat);
     setReverseResult(null);
-  }, []);
+  }, [setOrigin, setReverseResult]);
 
   // Reverse geocode when origin changes (skip during drag)
   useEffect(() => {
@@ -72,7 +86,7 @@ export function App(): React.ReactElement {
     });
 
     return () => { controller.abort(); };
-  }, [origin, isDragging]);
+  }, [origin, isDragging, setReverseResult]);
 
   // Trigger computation when origin or contours change (skip during drag)
   useEffect(() => {
@@ -82,14 +96,11 @@ export function App(): React.ReactElement {
   }, [origin, contours, compute, isDragging]);
 
   // Manage draggable origin marker with mode-specific icon.
-  // Uses isDraggingRef to prevent marker recreation during active drag
-  // (setOrigin triggers this effect, which would destroy the marker mid-drag).
   const isDraggingRef = useRef(false);
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    // During active drag, skip marker recreation — just let IsochroneLayer react to new origin
     if (isDraggingRef.current) return;
 
     if (markerRef.current) {
@@ -106,11 +117,10 @@ export function App(): React.ReactElement {
       marker.on('dragstart', () => {
         isDraggingRef.current = true;
         setIsDragging(true);
-        clear(); // Remove stale isochrone polygon immediately
+        clear();
       });
 
       marker.on('drag', () => {
-        // Throttle to ~100ms (10fps) — enough for smooth preview, avoids cascading 60fps state updates
         const now = Date.now();
         if (now - dragThrottleRef.current < 100) return;
         dragThrottleRef.current = now;
@@ -122,8 +132,6 @@ export function App(): React.ReactElement {
       marker.on('dragend', () => {
         isDraggingRef.current = false;
         const pos = marker.getLngLat();
-        // Set origin first, then isDragging=false — React 18 batches both,
-        // so effects see the final position AND isDragging=false in one render
         setOrigin({ lng: pos.lng, lat: pos.lat });
         setIsDragging(false);
       });
@@ -133,8 +141,7 @@ export function App(): React.ReactElement {
   }, [origin, mapRef, studyAreaMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleClear = useCallback(() => {
-    setOrigin(null);
-    setReverseResult(null);
+    useSectionStore.getState().clearOrigin();
     clear();
     geocoder.clear();
     if (markerRef.current) {
@@ -151,29 +158,19 @@ export function App(): React.ReactElement {
       city: parts[1] ?? '',
     });
     mapRef.current?.flyTo({ center: [lngLat.lng, lngLat.lat], zoom: 15 });
-  }, [mapRef]);
-
-  const handleCustomMinutesChange = useCallback((value: number | null) => {
-    setCustomMinutes(value);
-  }, []);
+  }, [mapRef, setOrigin, setReverseResult]);
 
   const handleGeolocate = useCallback((lngLat: LngLat) => {
     setOrigin(lngLat);
     setReverseResult(null);
-  }, []);
+  }, [setOrigin, setReverseResult]);
 
   const isMobile = useIsMobile();
 
   const sidebarEl = (
     <Sidebar
-      origin={origin}
-      reverseResult={reverseResult}
       status={status}
       error={error}
-      mode={studyAreaMode}
-      onModeChange={setStudyAreaMode}
-      customMinutes={customMinutes}
-      onCustomMinutesChange={handleCustomMinutesChange}
       onClear={handleClear}
       geocoder={geocoder}
       onGeocoderSelect={handleGeocoderSelect}
@@ -181,7 +178,6 @@ export function App(): React.ReactElement {
       konturCell={konturCell}
       konturState={konturState}
       chronoScore={chronoScore}
-      isDragging={isDragging}
       previews={previews}
       isMobile={isMobile}
     />
@@ -202,7 +198,7 @@ export function App(): React.ReactElement {
       <MapControls
         map={mapRef.current}
         is3D={is3D}
-        onToggle3D={() => setIs3D((v) => !v)}
+        onToggle3D={toggleIs3D}
         onGeolocate={handleGeolocate}
         isMobile={isMobile}
       />
