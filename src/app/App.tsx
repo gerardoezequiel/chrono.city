@@ -10,6 +10,7 @@ import { Sidebar } from '@/features/sections';
 import type { LngLat, StudyAreaMode, StudyArea } from '@/shared/types/geo';
 import { getStudyAreaPolygon, bboxFromPolygon, polygonToWkt } from '@/shared/utils/study-area';
 import { ISOCHRONE_PRESETS } from '@/config/constants';
+import { seedPreloadCache } from '@/data/preload';
 import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { MobileSheet } from '@/shared/components/MobileSheet';
 
@@ -57,6 +58,9 @@ function createMarkerElement(mode: StudyAreaMode): HTMLElement {
 }
 
 export function App(): React.ReactElement {
+  // Seed cache from pre-extracted London data (once, fire-and-forget)
+  useEffect(() => { seedPreloadCache(); }, []);
+
   const { mapRef, onMapReady } = useMap();
   const { features, status, error, compute, clear } = useIsochrone();
   const geocoder = useGeocoder();
