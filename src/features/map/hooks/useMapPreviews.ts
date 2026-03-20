@@ -6,7 +6,7 @@ import type { BuildingMetrics, NetworkMetrics, AmenityMetrics, SectionId } from 
 import { computeOrientation } from '@/shared/utils/orientation';
 import { classifyFifteenMin } from '@/shared/utils/fifteen-min';
 
-const THROTTLE_MS = 120; // ~8fps during drag
+const THROTTLE_MS = 300; // Reduced frequency — previews are gap-filler, not primary data
 const PROXIMITY_RADIUS_M = 500; // Filter features to ~500m around origin (matches bbox quantize grid)
 
 export type MapPreviews = Partial<Record<SectionId, Record<string, unknown> | null>>;
@@ -261,17 +261,10 @@ export function useMapPreviews(
       }
     };
 
-    // Recompute after pan/zoom — different tiles in viewport
-    const onMoveEnd = (): void => {
-      rafRef.current = requestAnimationFrame(compute);
-    };
-
     map.on('sourcedata', onSourceData);
-    map.on('moveend', onMoveEnd);
 
     return () => {
       map.off('sourcedata', onSourceData);
-      map.off('moveend', onMoveEnd);
       cancelAnimationFrame(rafRef.current);
     };
   }, [map, origin, pedshedRing]);
