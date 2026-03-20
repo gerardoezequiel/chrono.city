@@ -11,3 +11,8 @@ export interface LngLat {
 }
 
 export type StudyAreaMode = 'isochrone' | 'ring';
+
+export interface StudyArea {
+  bbox: BBox;
+  polygonWkt: string;
+}

@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import type maplibregl from 'maplibre-gl';
+import type { Feature, Polygon } from 'geojson';
 import type { LngLat } from '@/shared/types/geo';
 import type { BuildingMetrics, NetworkMetrics, AmenityMetrics, SectionId } from '@/shared/types/metrics';
 import { computeOrientation } from '@/shared/utils/orientation';
+import { classifyFifteenMin } from '@/shared/utils/fifteen-min';
 
 const THROTTLE_MS = 120; // ~8fps during drag
+const PROXIMITY_RADIUS_M = 500; // Filter features to ~500m around origin (matches bbox quantize grid)
 
 export type MapPreviews = Partial<Record<SectionId, Record<string, unknown> | null>>;
 
@@ -15,6 +18,84 @@ function distanceM(a: [number, number], b: [number, number]): number {
   const dLat = (b[1] - a[1]) * 111_139;
   const dLng = (b[0] - a[0]) * 111_139 * Math.cos(((a[1] + b[1]) / 2) * DEG_TO_RAD);
   return Math.sqrt(dLat * dLat + dLng * dLng);
+}
+
+/** Extract a representative [lng, lat] from any geometry type */
+function representativePoint(geom: GeoJSON.Geometry): [number, number] | null {
+  if (geom.type === 'Point') return geom.coordinates as [number, number];
+  if (geom.type === 'LineString') {
+    const mid = Math.floor(geom.coordinates.length / 2);
+    return geom.coordinates[mid] as [number, number];
+  }
+  if (geom.type === 'Polygon') {
+    const ring = geom.coordinates[0];
+    if (!ring || ring.length === 0) return null;
+    let cx = 0, cy = 0;
+    const n = ring.length - 1; // exclude closing vertex
+    for (let i = 0; i < n; i++) { cx += ring[i]![0]!; cy += ring[i]![1]!; }
+    return n > 0 ? [cx / n, cy / n] : null;
+  }
+  if (geom.type === 'MultiLineString') {
+    const line = geom.coordinates[0];
+    if (!line) return null;
+    const mid = Math.floor(line.length / 2);
+    return line[mid] as [number, number];
+  }
+  if (geom.type === 'MultiPolygon') {
+    const ring = geom.coordinates[0]?.[0];
+    if (!ring || ring.length === 0) return null;
+    let cx = 0, cy = 0;
+    const n = ring.length - 1;
+    for (let i = 0; i < n; i++) { cx += ring[i]![0]!; cy += ring[i]![1]!; }
+    return n > 0 ? [cx / n, cy / n] : null;
+  }
+  return null;
+}
+
+/** Filter features to those within PROXIMITY_RADIUS_M of origin */
+function filterNearOrigin(features: GeoJSON.Feature[], origin: LngLat): GeoJSON.Feature[] {
+  const o: [number, number] = [origin.lng, origin.lat];
+  return features.filter((f) => {
+    const pt = representativePoint(f.geometry);
+    return pt != null && distanceM(o, pt) <= PROXIMITY_RADIUS_M;
+  });
+}
+
+/** Ray-casting point-in-polygon test */
+function pointInPolygon(pt: [number, number], ring: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const ri = ring[i]; const rj = ring[j];
+    if (!ri || !rj) continue;
+    const xi = ri[0] ?? 0, yi = ri[1] ?? 0;
+    const xj = rj[0] ?? 0, yj = rj[1] ?? 0;
+    if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/** Extract outermost polygon ring from isochrone features */
+function getOuterRing(features: Feature<Polygon>[]): number[][] | null {
+  let outermost: Feature<Polygon> | undefined;
+  let maxContour = -1;
+  for (const f of features) {
+    const c = (f.properties?.contour as number) ?? 0;
+    if (c > maxContour) { maxContour = c; outermost = f; }
+  }
+  return outermost?.geometry.coordinates[0] ?? null;
+}
+
+/** Filter features by pedshed polygon, falling back to radius from origin */
+function filterByPedshed(features: GeoJSON.Feature[], origin: LngLat, pedshedRing: number[][] | null): GeoJSON.Feature[] {
+  if (pedshedRing) {
+    return features.filter((f) => {
+      const pt = representativePoint(f.geometry);
+      return pt != null && pointInPolygon(pt, pedshedRing);
+    });
+  }
+  return filterNearOrigin(features, origin);
 }
 
 /** Deduplicate features by id — querySourceFeatures returns duplicates from overlapping tiles */
@@ -37,12 +118,15 @@ function computeBuildingPreview(features: GeoJSON.Feature[]): Partial<BuildingMe
   let heightSum = 0;
   let withFloors = 0;
   let floorSum = 0;
+  const typeDist: Record<string, number> = {};
 
   for (const f of unique) {
     const h = f.properties?.height as number | undefined;
     if (h != null && h > 0) { withHeight++; heightSum += h; }
     const fl = f.properties?.num_floors as number | undefined;
     if (fl != null && fl > 0) { withFloors++; floorSum += fl; }
+    const cls = (f.properties?.class as string) ?? (f.properties?.subtype as string) ?? 'unknown';
+    typeDist[cls] = (typeDist[cls] ?? 0) + 1;
   }
 
   return {
@@ -51,6 +135,7 @@ function computeBuildingPreview(features: GeoJSON.Feature[]): Partial<BuildingMe
     heightCoverage: count > 0 ? withHeight / count : 0,
     avgHeightM: withHeight > 0 ? heightSum / withHeight : null,
     avgFloors: withFloors > 0 ? floorSum / withFloors : null,
+    buildingTypeDistribution: typeDist,
     // totalFootprintAreaM2, avgFootprintAreaM2 left undefined — needs DuckDB spatial
   };
 }
@@ -107,8 +192,10 @@ function computeAmenityPreview(features: GeoJSON.Feature[]): Partial<AmenityMetr
 
   return {
     poiCount: unique.length,
+    uniqueCategories: Object.keys(catDist).length,
     categoryDistribution: catDist,
     topCategories,
+    fifteenMinCategories: classifyFifteenMin(catDist),
   };
 }
 
@@ -123,10 +210,14 @@ const PREVIEW_SOURCES = new Set(['buildings', 'transportation', 'places']);
 export function useMapPreviews(
   map: maplibregl.Map | null,
   origin: LngLat | null,
+  pedshedFeatures?: Feature<Polygon>[],
 ): MapPreviews {
   const [previews, setPreviews] = useState<MapPreviews>({});
   const lastComputeRef = useRef(0);
   const rafRef = useRef(0);
+
+  // Extract outermost polygon ring once per pedshed change
+  const pedshedRing = pedshedFeatures?.length ? getOuterRing(pedshedFeatures) : null;
 
   useEffect(() => {
     if (!map || !origin) {
@@ -139,18 +230,19 @@ export function useMapPreviews(
       if (now - lastComputeRef.current < THROTTLE_MS) return;
       lastComputeRef.current = now;
 
-      const buildingFeatures = map.querySourceFeatures('buildings', {
+      const buildingFeatures = filterNearOrigin(map.querySourceFeatures('buildings', {
         sourceLayer: 'building',
-      }) as GeoJSON.Feature[];
+      }) as GeoJSON.Feature[], origin);
 
-      const networkFeatures = map.querySourceFeatures('transportation', {
+      // Network: use pedshed polygon when available, fall back to radius
+      const networkFeatures = filterByPedshed(map.querySourceFeatures('transportation', {
         sourceLayer: 'segment',
         filter: ['==', ['get', 'subtype'], 'road'],
-      }) as GeoJSON.Feature[];
+      }) as GeoJSON.Feature[], origin, pedshedRing);
 
-      const amenityFeatures = map.querySourceFeatures('places', {
+      const amenityFeatures = filterNearOrigin(map.querySourceFeatures('places', {
         sourceLayer: 'place',
-      }) as GeoJSON.Feature[];
+      }) as GeoJSON.Feature[], origin);
 
       const next: MapPreviews = {};
       if (buildingFeatures.length > 0) next.buildings = computeBuildingPreview(buildingFeatures) as Record<string, unknown>;
@@ -182,7 +274,7 @@ export function useMapPreviews(
       map.off('moveend', onMoveEnd);
       cancelAnimationFrame(rafRef.current);
     };
-  }, [map, origin]);
+  }, [map, origin, pedshedRing]);
 
   return previews;
 }

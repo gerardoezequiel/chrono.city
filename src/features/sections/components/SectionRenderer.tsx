@@ -8,10 +8,12 @@ import { SectionShell } from './SectionShell';
 
 interface SectionRendererProps {
   sectionId: SectionId;
-  bbox: BBox;
+  bbox: BBox | null;
   activeSection: SectionId;
   isDragging: boolean;
   preview?: Record<string, unknown> | null;
+  konturData?: Record<string, unknown> | null;
+  polygonWkt?: string;
 }
 
 /**
@@ -25,7 +27,7 @@ interface SectionRendererProps {
  * Preview merge: PMTiles preview fills metrics instantly,
  * DuckDB overrides when ready.
  */
-function SectionRendererRaw({ sectionId, bbox, activeSection, isDragging, preview }: SectionRendererProps): React.ReactElement | null {
+function SectionRendererRaw({ sectionId, bbox, activeSection, isDragging, preview, konturData, polygonWkt }: SectionRendererProps): React.ReactElement | null {
   const config = getSectionConfig(sectionId);
 
   // High watermark — once scrolled to, stay enabled forever
@@ -33,21 +35,28 @@ function SectionRendererRaw({ sectionId, bbox, activeSection, isDragging, previe
   if (activeSection === sectionId) hasBeenActiveRef.current = true;
   const enabled = hasBeenActiveRef.current && !isDragging;
 
-  const { data, state, error, queryMs } = useSectionData(sectionId, bbox, enabled);
+  const { data, state, error, queryMs } = useSectionData(sectionId, bbox, enabled, polygonWkt);
   const narrative = SECTION_NARRATIVES[sectionId as keyof typeof SECTION_NARRATIVES];
 
-  // Merge: DuckDB overrides preview, preview fills gaps
-  const displayData = useMemo(() => {
+  // Three-source merge: DuckDB > PMTiles > Kontur (last write wins)
+  const { displayData, dataSource } = useMemo(() => {
     if (data) {
       const base = data as Record<string, unknown>;
-      return preview ? { ...preview, ...base } : base;
+      const merged = preview ? { ...preview, ...base } : base;
+      return { displayData: merged, dataSource: 'duckdb' as const };
     }
-    return preview ?? null;
-  }, [data, preview]);
+    if (preview) {
+      const merged = konturData ? { ...konturData, ...preview } : preview;
+      return { displayData: merged, dataSource: 'pmtiles' as const };
+    }
+    if (konturData) {
+      return { displayData: konturData, dataSource: 'kontur' as const };
+    }
+    return { displayData: null, dataSource: null };
+  }, [data, preview, konturData]);
 
-  // If preview available but DuckDB not yet loaded, skip skeletons
-  const displayState = (!data && preview) ? 'loaded' as const : state;
-  const isEstimate = state !== 'loaded' && preview != null;
+  // If any pre-DuckDB data available, skip skeletons
+  const displayState = (!data && displayData) ? 'loaded' as const : state;
 
   if (!config) return null;
 
@@ -64,7 +73,7 @@ function SectionRendererRaw({ sectionId, bbox, activeSection, isDragging, previe
         narrative={narrative?.intro}
         mapHint={narrative?.mapHint}
         charts={config.charts}
-        isEstimate={isEstimate}
+        dataSource={dataSource}
       />
     </div>
   );

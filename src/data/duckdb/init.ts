@@ -113,3 +113,6 @@ export async function query<T>(sql: string): Promise<T[]> {
 export function isReady(): boolean {
   return dbInstance !== null && connPool.length > 0;
 }
+
+/** Promise that resolves when DuckDB + pool is fully ready */
+export const readyPromise: Promise<void> = getDuckDB().then(() => ensurePool());

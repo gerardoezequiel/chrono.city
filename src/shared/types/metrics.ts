@@ -39,6 +39,7 @@ export interface BuildingMetrics {
   avgHeightM: number | null;
   avgFloors: number | null;
   heightCoverage: number;
+  buildingTypeDistribution: Record<string, number>;
 }
 
 export interface NetworkMetrics {
@@ -53,8 +54,11 @@ export interface NetworkMetrics {
 
 export interface AmenityMetrics {
   poiCount: number;
+  uniqueCategories: number;
   categoryDistribution: Record<string, number>;
   topCategories: Array<{ category: string; count: number }>;
+  /** 15-minute city group presence (8 groups) */
+  fifteenMinCategories?: Record<string, boolean>;
 }
 
 // ─── Overview metrics (Kontur H3) ───────────────────────────

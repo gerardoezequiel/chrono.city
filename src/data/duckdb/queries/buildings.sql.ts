@@ -15,21 +15,42 @@ interface BuildingRow {
   avg_floors: number | null;
 }
 
-export async function queryBuildings(bbox: BBox): Promise<BuildingMetrics> {
-  const sql = `
-    SELECT
-      COUNT(*) as building_count,
-      SUM(ST_Area_Spheroid(geometry)) as total_footprint_area_m2,
-      AVG(ST_Area_Spheroid(geometry)) as avg_footprint_area_m2,
-      COUNT(CASE WHEN height IS NOT NULL THEN 1 END) as buildings_with_height,
-      AVG(height) as avg_height_m,
-      AVG(num_floors) as avg_floors
-    FROM read_parquet('${S3_PATHS.buildings}', hive_partitioning=1)
-    WHERE ${BBOX_PRED(bbox)}
-  `;
+interface TypeRow {
+  building_type: string;
+  cnt: number;
+}
 
-  const rows = await query<BuildingRow>(sql);
+export async function queryBuildings(bbox: BBox, polygonWkt?: string): Promise<BuildingMetrics> {
+  const source = `read_parquet('${S3_PATHS.buildings}', hive_partitioning=1)`;
+  const pred = BBOX_PRED(bbox);
+  const spatialFilter = polygonWkt ? ` AND ST_Intersects(geometry, ST_GeomFromText('${polygonWkt}'))` : '';
+
+  const [rows, typeRows] = await Promise.all([
+    query<BuildingRow>(`
+      SELECT
+        COUNT(*) as building_count,
+        SUM(ST_Area_Spheroid(geometry)) as total_footprint_area_m2,
+        AVG(ST_Area_Spheroid(geometry)) as avg_footprint_area_m2,
+        COUNT(CASE WHEN height IS NOT NULL THEN 1 END) as buildings_with_height,
+        AVG(height) as avg_height_m,
+        AVG(num_floors) as avg_floors
+      FROM ${source}
+      WHERE ${pred}${spatialFilter}
+    `),
+    query<TypeRow>(`
+      SELECT COALESCE(subtype, 'unknown') as building_type, COUNT(*) as cnt
+      FROM ${source}
+      WHERE ${pred}${spatialFilter}
+      GROUP BY 1
+      ORDER BY cnt DESC
+    `),
+  ]);
+
   const r = rows[0];
+  const typeDist: Record<string, number> = {};
+  for (const tr of typeRows) {
+    typeDist[tr.building_type] = Number(tr.cnt);
+  }
 
   if (!r || r.building_count === 0) {
     return {
@@ -40,6 +61,7 @@ export async function queryBuildings(bbox: BBox): Promise<BuildingMetrics> {
       avgHeightM: null,
       avgFloors: null,
       heightCoverage: 0,
+      buildingTypeDistribution: {},
     };
   }
 
@@ -51,5 +73,6 @@ export async function queryBuildings(bbox: BBox): Promise<BuildingMetrics> {
     avgHeightM: r.avg_height_m != null ? Number(r.avg_height_m) : null,
     avgFloors: r.avg_floors != null ? Number(r.avg_floors) : null,
     heightCoverage: r.building_count > 0 ? Number(r.buildings_with_height) / Number(r.building_count) : 0,
+    buildingTypeDistribution: typeDist,
   };
 }

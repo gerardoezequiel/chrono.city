@@ -57,8 +57,8 @@ export const GRAPH_FETCH_RADIUS_DEG = 0.02;
 
 /** Map defaults */
 export const MAP_DEFAULTS = {
-  center: [-73.985, 40.748] as [number, number], // NYC
-  zoom: 13,
+  center: [-0.130, 51.513] as [number, number], // London Soho
+  zoom: 14,
   minZoom: 2,
   maxZoom: 20,
 } as const;

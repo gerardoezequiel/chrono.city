@@ -1,42 +1,67 @@
 import { useEffect } from 'react';
 import type maplibregl from 'maplibre-gl';
-import { KONTUR_LAYER_NAME } from '@/config/kontur';
+import { KONTUR_LAYER_NAME, KONTUR_TILE_URL } from '@/config/kontur';
 
 interface KonturLayerProps {
   map: maplibregl.Map | null;
   visible: boolean;
 }
 
-const KONTUR_DENSITY_ID = 'kontur-density';
-const KONTUR_LAND_CLASS_ID = 'kontur-land-class';
+const KONTUR_BUILDING_DENSITY_ID = 'kontur-building-density';
+const KONTUR_POP_DENSITY_ID = 'kontur-pop-density';
 
-/**
- * Land classification taxonomy (6-class, from wurman-maps).
- * Maps built_up_share / trees+grass / commercial / industrial thresholds
- * to a simplified color tint for district-scale context.
- */
-const LAND_CLASS_COLORS = {
-  residential: '#c9a9a9',   // warm muted rose
-  green: '#a9c9a9',         // soft sage
-  commercial: '#a9b8c9',    // steel blue-grey
-  industrial: '#b8a9c9',    // lavender grey
-  institutional: '#c9c0a9', // warm tan
-  water: '#a9bfc9',         // pale teal
-} as const;
+const ALL_KONTUR_LAYERS = [KONTUR_BUILDING_DENSITY_ID, KONTUR_POP_DENSITY_ID];
 
 function ensureKonturLayers(map: maplibregl.Map): boolean {
-  if (map.getLayer(KONTUR_DENSITY_ID)) return true;
+  if (map.getLayer(KONTUR_BUILDING_DENSITY_ID)) return true;
 
   try {
-    // Insert below building layers — find first building layer
+    // Insert below building layers
     const firstBuildingLayer = map.getStyle().layers?.find(
       (l) => l.id.startsWith('buildings-'),
     )?.id;
 
-    // Population density choropleth — H3 fill
+    console.log('[KonturLayer] Adding layers. beforeId:', firstBuildingLayer);
+
+    // Building density — warm ramp by building count per H3 cell
+    // coalesce tries multiple property name variants (Kontur API naming varies)
     map.addLayer(
       {
-        id: KONTUR_DENSITY_ID,
+        id: KONTUR_BUILDING_DENSITY_ID,
+        type: 'fill',
+        source: 'kontur',
+        'source-layer': KONTUR_LAYER_NAME,
+        minzoom: 3,
+        maxzoom: 13,
+        paint: {
+          'fill-color': [
+            'interpolate', ['linear'],
+            ['coalesce', ['get', 'all_buildings_count'], ['get', 'building_count'], ['get', 'total_building_count'], 0],
+            0,    '#fef9f2',
+            10,   '#fde8cd',
+            50,   '#f5c99d',
+            200,  '#e8a76c',
+            500,  '#d4854a',
+            2000, '#b05e2a',
+            5000, '#8b3e15',
+          ],
+          'fill-opacity': ['interpolate', ['linear'], ['zoom'],
+            3, 0.4,
+            6, 0.55,
+            9, 0.6,
+            11, 0.45,
+            12, 0.25,
+            13, 0,
+          ],
+        },
+      },
+      firstBuildingLayer,
+    );
+
+    // Population density — grey tint for settlement context (below building density)
+    map.addLayer(
+      {
+        id: KONTUR_POP_DENSITY_ID,
         type: 'fill',
         source: 'kontur',
         'source-layer': KONTUR_LAYER_NAME,
@@ -45,7 +70,7 @@ function ensureKonturLayers(map: maplibregl.Map): boolean {
         paint: {
           'fill-color': [
             'interpolate', ['linear'],
-            ['coalesce', ['get', 'population_density'], 0],
+            ['coalesce', ['get', 'population_density'], ['get', 'population'], 0],
             0,     '#f5f5f5',
             50,    '#d4d4d4',
             200,   '#a3a3a3',
@@ -54,65 +79,18 @@ function ensureKonturLayers(map: maplibregl.Map): boolean {
             20000, '#262626',
           ],
           'fill-opacity': ['interpolate', ['linear'], ['zoom'],
-            3, 0.15,
-            6, 0.25,
-            9, 0.3,
+            3, 0.2,
+            6, 0.3,
+            9, 0.25,
             11, 0.15,
             12, 0,
           ],
         },
       },
-      firstBuildingLayer,
+      KONTUR_BUILDING_DENSITY_ID,
     );
 
-    // Land classification tint — subtle underlay
-    map.addLayer(
-      {
-        id: KONTUR_LAND_CLASS_ID,
-        type: 'fill',
-        source: 'kontur',
-        'source-layer': KONTUR_LAYER_NAME,
-        minzoom: 5,
-        maxzoom: 12,
-        paint: {
-          'fill-color': [
-            'case',
-            // Water-dominated
-            ['>=', ['coalesce', ['get', 'water_share'], 0], 0.5],
-            LAND_CLASS_COLORS.water,
-            // Green-dominated (trees + grass > 50%)
-            ['>=', ['+',
-              ['coalesce', ['get', 'trees_share'], 0],
-              ['coalesce', ['get', 'grass_share'], 0],
-            ], 0.5],
-            LAND_CLASS_COLORS.green,
-            // Industrial
-            ['>=', ['coalesce', ['get', 'industrial_buildings_count'], 0], 5],
-            LAND_CLASS_COLORS.industrial,
-            // Commercial
-            ['>=', ['coalesce', ['get', 'commercial_buildings_count'], 0], 10],
-            LAND_CLASS_COLORS.commercial,
-            // Institutional (education + health + public service)
-            ['>=', ['+',
-              ['coalesce', ['get', 'education_count'], 0],
-              ['coalesce', ['get', 'health_count'], 0],
-              ['coalesce', ['get', 'public_service_count'], 0],
-            ], 5],
-            LAND_CLASS_COLORS.institutional,
-            // Default: residential
-            LAND_CLASS_COLORS.residential,
-          ],
-          'fill-opacity': ['interpolate', ['linear'], ['zoom'],
-            5, 0.08,
-            8, 0.12,
-            10, 0.1,
-            12, 0,
-          ],
-        },
-      },
-      KONTUR_DENSITY_ID,
-    );
-
+    console.log('[KonturLayer] Layers added successfully');
     return true;
   } catch (e) {
     console.warn('[KonturLayer] ensureKonturLayers failed:', e);
@@ -121,6 +99,50 @@ function ensureKonturLayers(map: maplibregl.Map): boolean {
 }
 
 export function KonturLayer({ map, visible }: KonturLayerProps): null {
+  // Diagnose: check if kontur tiles actually load
+  useEffect(() => {
+    if (!map) return;
+
+    // Test tile connectivity
+    const testUrl = KONTUR_TILE_URL.replace('{z}', '3').replace('{x}', '4').replace('{y}', '3');
+    console.log('[KonturLayer] Testing tile URL:', testUrl);
+    fetch(testUrl, { mode: 'cors' })
+      .then((r) => {
+        console.log(`[KonturLayer] Tile fetch: ${r.status} ${r.statusText}, type: ${r.headers.get('content-type')}, size: ${r.headers.get('content-length')}`);
+      })
+      .catch((e) => {
+        console.error('[KonturLayer] Tile fetch FAILED — tiles will not render:', e);
+      });
+
+    // Listen for source load events
+    const onSourceData = (e: maplibregl.MapSourceDataEvent): void => {
+      if (e.sourceId !== 'kontur') return;
+      if (e.isSourceLoaded) {
+        const features = map.querySourceFeatures('kontur', { sourceLayer: KONTUR_LAYER_NAME });
+        console.log(`[KonturLayer] Source loaded. Features: ${features.length}`);
+        if (features.length > 0) {
+          const sample = features[0];
+          console.log('[KonturLayer] Sample feature properties:', JSON.stringify(sample?.properties, null, 2));
+          console.log('[KonturLayer] Sample geometry type:', sample?.geometry?.type);
+        }
+      }
+    };
+
+    const onError = (e: unknown): void => {
+      const err = e as { sourceId?: string; error?: { message?: string } };
+      if (err.sourceId === 'kontur') {
+        console.error('[KonturLayer] Source error:', err.error?.message ?? err);
+      }
+    };
+
+    map.on('sourcedata', onSourceData);
+    map.on('error', onError);
+    return () => {
+      map.off('sourcedata', onSourceData);
+      map.off('error', onError);
+    };
+  }, [map]);
+
   // Add layers when map is ready
   useEffect(() => {
     if (!map) return;
@@ -137,7 +159,7 @@ export function KonturLayer({ map, visible }: KonturLayerProps): null {
   useEffect(() => {
     if (!map || !ensureKonturLayers(map)) return;
     const vis = visible ? 'visible' : 'none';
-    for (const id of [KONTUR_DENSITY_ID, KONTUR_LAND_CLASS_ID]) {
+    for (const id of ALL_KONTUR_LAYERS) {
       if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
     }
   }, [map, visible]);

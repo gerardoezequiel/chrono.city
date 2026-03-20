@@ -19,8 +19,8 @@ interface SectionShellProps {
   mapHint?: string;
   /** Chart bindings to render after resolved metrics */
   charts?: ChartBinding[];
-  /** True when showing PMTiles preview data before DuckDB resolves */
-  isEstimate?: boolean;
+  /** Active data source for badge display */
+  dataSource?: 'kontur' | 'pmtiles' | 'duckdb' | null;
   children?: React.ReactNode;
 }
 
@@ -41,7 +41,7 @@ function SectionShellRaw({
   narrative,
   mapHint,
   charts,
-  isEstimate,
+  dataSource,
   children,
 }: SectionShellProps): React.ReactElement {
   const hasMetrics = descriptors.length > 0;
@@ -54,18 +54,24 @@ function SectionShellRaw({
       <div className="flex items-baseline justify-between">
         <h3 className="font-heading text-sm font-bold text-neutral-900 uppercase tracking-tight">{title}</h3>
         <div className="flex items-center gap-2">
-          {isEstimate && (
+          {dataSource === 'kontur' && (
+            <span className="font-mono text-[11px] md:text-[8px] text-neutral-400 uppercase tracking-wider flex items-center gap-1">
+              <span className="inline-block w-1 h-1 rounded-full bg-neutral-400 animate-pulse" />
+              H3 Cell
+            </span>
+          )}
+          {dataSource === 'pmtiles' && (
             <span className="font-mono text-[11px] md:text-[8px] text-neutral-400 uppercase tracking-wider flex items-center gap-1">
               <span className="inline-block w-1 h-1 rounded-full bg-neutral-400 animate-pulse" />
               Preview
             </span>
           )}
-          {!isEstimate && state === 'loading' && (
+          {!dataSource && state === 'loading' && (
             <span className="font-mono text-[11px] md:text-[8px] text-neutral-400 uppercase tracking-wider animate-pulse">
               Analyzing...
             </span>
           )}
-          {isResolved && queryMs != null && !isEstimate && (
+          {dataSource === 'duckdb' && queryMs != null && (
             <span className="font-mono text-[11px] md:text-[8px] text-neutral-300 tabular-nums">{queryMs.toFixed(0)}ms</span>
           )}
         </div>
@@ -114,7 +120,7 @@ function SectionShellRaw({
       )}
 
       {/* Charts — rendered after resolved metrics */}
-      {isResolved && charts && charts.length > 0 && charts.map((b) => (
+      {data != null && charts && charts.length > 0 && charts.map((b) => (
         <ChartRenderer key={b.dataKey} binding={b} data={data} />
       ))}
 

@@ -16,7 +16,8 @@ interface RoadClassRow {
  * Road class aggregation only. Orientation is computed from PMTiles
  * via useMapPreviews (instant, no S3 download needed).
  */
-export async function queryTransport(bbox: BBox): Promise<NetworkMetrics> {
+export async function queryTransport(bbox: BBox, polygonWkt?: string): Promise<NetworkMetrics> {
+  const spatialFilter = polygonWkt ? ` AND ST_Intersects(geometry, ST_GeomFromText('${polygonWkt}'))` : '';
   const classSql = `
     SELECT
       class as road_class,
@@ -24,7 +25,7 @@ export async function queryTransport(bbox: BBox): Promise<NetworkMetrics> {
       SUM(ST_Length_Spheroid(geometry)) as total_length_m
     FROM read_parquet('${S3_PATHS.segments}', hive_partitioning=1)
     WHERE ${BBOX_PRED(bbox)}
-      AND subtype = 'road'
+      AND subtype = 'road'${spatialFilter}
     GROUP BY class
     ORDER BY total_length_m DESC
   `;

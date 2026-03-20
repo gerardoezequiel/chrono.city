@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type maplibregl from 'maplibre-gl';
 import type { Feature, Polygon } from 'geojson';
 import type { LngLat, StudyAreaMode } from '@/shared/types/geo';
+import { makeCircle, getStudyAreaPolygon, WALK_M_PER_MIN, DEG_PER_METER_LAT } from '@/shared/utils/study-area';
 
 const ISO_SOURCE = 'isochrone-source';
 const PED_SOURCE = 'pedshed-source';
@@ -16,11 +17,6 @@ const CONTOUR_WIDTHS: Record<number, number> = { 5: 3, 10: 2.5, 15: 2 };
 const DEFAULT_COLOR = '#0a0a0a';
 const DEFAULT_WIDTH = 2.5;
 
-// Geometry
-const WALK_M_PER_MIN = 83.33;
-const CIRCLE_SEGMENTS = 64;
-const DEG_PER_METER_LAT = 1 / 111_139;
-
 // World bounds for inverted mask (outer ring)
 const WORLD: [number, number][] = [
   [-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90],
@@ -34,17 +30,6 @@ interface IsochroneLayerProps {
   contours: number[];
   /** When true and mode is 'isochrone', show pedshed circles as preview */
   isDragging?: boolean;
-}
-
-function makeCircle(center: LngLat, radiusM: number, contour: number): Feature<Polygon> {
-  const dLat = radiusM * DEG_PER_METER_LAT;
-  const dLng = dLat / Math.cos(center.lat * Math.PI / 180);
-  const coords: [number, number][] = [];
-  for (let i = 0; i <= CIRCLE_SEGMENTS; i++) {
-    const angle = (2 * Math.PI * i) / CIRCLE_SEGMENTS;
-    coords.push([center.lng + dLng * Math.cos(angle), center.lat + dLat * Math.sin(angle)]);
-  }
-  return { type: 'Feature', properties: { contour }, geometry: { type: 'Polygon', coordinates: [coords] } };
 }
 
 function formatDistance(meters: number): string {
@@ -113,21 +98,6 @@ function findEdgeDistAtAzimuth(origin: LngLat, ring: number[][], azimuthDeg: num
     if (t > 0.001 && u >= 0 && u <= 1 && t < minT) minT = t;
   }
   return minT === Infinity ? null : minT; // t is in meters (since dir is per-meter)
-}
-
-function getStudyAreaGeometry(
-  origin: LngLat, features: Feature<Polygon>[], mode: StudyAreaMode, contours: number[],
-): GeoJSON.Polygon | null {
-  const maxMinutes = Math.max(...contours);
-  if (mode === 'ring') return makeCircle(origin, maxMinutes * WALK_M_PER_MIN, maxMinutes).geometry;
-  // Valhalla returns contours largest-first — find the one with max contour value
-  let outermost: Feature<Polygon> | undefined;
-  let maxContour = -1;
-  for (const f of features) {
-    const c = (f.properties?.contour as number) ?? 0;
-    if (c > maxContour) { maxContour = c; outermost = f; }
-  }
-  return outermost?.geometry ?? null;
 }
 
 /** Create inverted mask: world polygon with study area cut out as a hole */
@@ -367,7 +337,7 @@ export function IsochroneLayer({ map, features, origin, mode, contours, isDraggi
     }
 
     const effectiveMode = showPedshed ? 'ring' : mode;
-    const area = getStudyAreaGeometry(origin, features, effectiveMode, contours);
+    const area = getStudyAreaPolygon(origin, features, effectiveMode, contours);
     if (!area) { maskSrc?.setData(EMPTY_FC); return; }
 
     maskSrc?.setData(makeInvertedMask(area));
@@ -390,7 +360,7 @@ export function IsochroneLayer({ map, features, origin, mode, contours, isDraggi
     if (!origin) { clearStates(); return; }
 
     const effectiveMode = showPedshed ? 'ring' : mode;
-    const area = getStudyAreaGeometry(origin, features, effectiveMode, contours);
+    const area = getStudyAreaPolygon(origin, features, effectiveMode, contours);
     if (!area) { clearStates(); return; }
 
     const ring = area.coordinates[0] as [number, number][];

@@ -17,9 +17,13 @@ export const ROAD_CLASS_COLORS: Record<string, string> = {
   unknown: '#a3a3a3',
 };
 
-export const OVERVIEW_CHARTS: ChartBinding[] = [];
+export const OVERVIEW_CHARTS: ChartBinding[] = [
+  { type: 'radar', dataKey: 'chapterScores', title: 'Urban Quality Profile' },
+];
 
-export const BUILDING_CHARTS: ChartBinding[] = [];
+export const BUILDING_CHARTS: ChartBinding[] = [
+  { type: 'bar', dataKey: 'buildingTypeDistribution', title: 'Building Types' },
+];
 
 export const NETWORK_CHARTS: ChartBinding[] = [
   {
@@ -32,5 +36,6 @@ export const NETWORK_CHARTS: ChartBinding[] = [
 ];
 
 export const AMENITY_CHARTS: ChartBinding[] = [
+  { type: 'checklist', dataKey: 'fifteenMinCategories', title: '15-Minute City' },
   { type: 'bar', dataKey: 'categoryDistribution', title: 'Place Categories' },
 ];

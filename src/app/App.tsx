@@ -7,10 +7,35 @@ import { useIsochrone } from '@/features/isochrone';
 import { useGeocoder, reverseGeocode } from '@/features/geocoder';
 import type { ReverseResult } from '@/features/geocoder';
 import { Sidebar } from '@/features/sections';
-import type { LngLat, StudyAreaMode } from '@/shared/types/geo';
+import type { LngLat, StudyAreaMode, StudyArea } from '@/shared/types/geo';
+import { getStudyAreaPolygon, bboxFromPolygon, polygonToWkt } from '@/shared/utils/study-area';
 import { ISOCHRONE_PRESETS } from '@/config/constants';
 import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { MobileSheet } from '@/shared/components/MobileSheet';
+
+/** Parse ?lat=&lng= from URL on initial load */
+function getOriginFromUrl(): LngLat | null {
+  const params = new URLSearchParams(window.location.search);
+  const lat = parseFloat(params.get('lat') ?? '');
+  const lng = parseFloat(params.get('lng') ?? '');
+  if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+    return { lat, lng };
+  }
+  return null;
+}
+
+/** Update URL without triggering navigation */
+function syncOriginToUrl(origin: LngLat | null): void {
+  const url = new URL(window.location.href);
+  if (origin) {
+    url.searchParams.set('lat', origin.lat.toFixed(5));
+    url.searchParams.set('lng', origin.lng.toFixed(5));
+  } else {
+    url.searchParams.delete('lat');
+    url.searchParams.delete('lng');
+  }
+  window.history.replaceState(null, '', url.toString());
+}
 
 const ISOCHRONE_SVG = `<svg width="22" height="22" viewBox="0 0 16 16" fill="none">
   <path d="M8 5.5C7 5.3 6 6 5.8 7C5.6 8 6.3 8.8 7 9.3C7.7 9.8 8.5 10 9.2 9.5C10 9 10.5 8 10.3 7C10.1 6 9 5.7 8 5.5Z" stroke="currentColor" stroke-width="1.2"/>
@@ -35,7 +60,7 @@ export function App(): React.ReactElement {
   const { mapRef, onMapReady } = useMap();
   const { features, status, error, compute, clear } = useIsochrone();
   const geocoder = useGeocoder();
-  const [origin, setOrigin] = useState<LngLat | null>(null);
+  const [origin, setOrigin] = useState<LngLat | null>(getOriginFromUrl);
   const [reverseResult, setReverseResult] = useState<ReverseResult | null>(null);
   const [studyAreaMode, setStudyAreaMode] = useState<StudyAreaMode>('ring');
   const [customMinutes, setCustomMinutes] = useState<number | null>(null); // null = presets
@@ -46,13 +71,31 @@ export function App(): React.ReactElement {
   const dragThrottleRef = useRef(0);
   const { cell: konturCell, state: konturState } = useKonturCell(mapRef.current, origin, !isDragging);
   const chronoScore = useChronoScore(konturCell);
-  const previews = useMapPreviews(mapRef.current, origin);
+  const previews = useMapPreviews(mapRef.current, origin, features);
 
   // Derive contour array: presets [5,10,15] or custom [N]
   const contours = useMemo<number[]>(
     () => customMinutes != null ? [customMinutes] : [...ISOCHRONE_PRESETS],
     [customMinutes],
   );
+
+  // Study area: polygon + bbox for DuckDB spatial filtering
+  const studyArea = useMemo((): StudyArea | null => {
+    if (!origin) return null;
+    const polygon = getStudyAreaPolygon(origin, features, studyAreaMode, contours);
+    if (!polygon) return null;
+    return { bbox: bboxFromPolygon(polygon), polygonWkt: polygonToWkt(polygon) };
+  }, [origin, features, studyAreaMode, contours]);
+
+  // If origin was set from URL params, fly to it once map is ready
+  const urlOriginHandled = useRef(false);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map && origin && !urlOriginHandled.current) {
+      urlOriginHandled.current = true;
+      map.flyTo({ center: [origin.lng, origin.lat], zoom: 15 });
+    }
+  }, [mapRef, origin]);
 
   const handleMapClick = useCallback((lngLat: LngLat) => {
     setOrigin(lngLat);
@@ -72,6 +115,11 @@ export function App(): React.ReactElement {
     });
 
     return () => { controller.abort(); };
+  }, [origin, isDragging]);
+
+  // Sync origin to URL params (debounce during drag)
+  useEffect(() => {
+    if (!isDragging) syncOriginToUrl(origin);
   }, [origin, isDragging]);
 
   // Trigger computation when origin or contours change (skip during drag)
@@ -183,6 +231,7 @@ export function App(): React.ReactElement {
       chronoScore={chronoScore}
       isDragging={isDragging}
       previews={previews}
+      studyArea={studyArea}
       isMobile={isMobile}
     />
   );

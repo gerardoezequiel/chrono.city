@@ -19,7 +19,7 @@ export interface SectionConfig {
   id: SectionId;
   name: string;
   description: string;
-  query: ((bbox: BBox) => Promise<unknown>) | null;
+  query: ((bbox: BBox, polygonWkt?: string) => Promise<unknown>) | null;
   metrics: MetricDescriptor[];
   charts: ChartBinding[];
   /** Map layers controlled by this section's scroll position */
@@ -40,7 +40,7 @@ export const SECTION_REGISTRY: SectionConfig[] = [
     id: 'buildings',
     name: 'Urban Fabric',
     description: 'Morphology, density, and urban grain',
-    query: (bbox: BBox) => queryBuildings(bbox) as Promise<unknown>,
+    query: (bbox, wkt) => queryBuildings(bbox, wkt) as Promise<unknown>,
     metrics: BUILDING_METRICS,
     charts: BUILDING_CHARTS,
     layers: {
@@ -52,7 +52,7 @@ export const SECTION_REGISTRY: SectionConfig[] = [
     id: 'network',
     name: 'Street Network',
     description: 'Connectivity, road classes, and orientation',
-    query: (bbox: BBox) => queryTransport(bbox) as Promise<unknown>,
+    query: (bbox, wkt) => queryTransport(bbox, wkt) as Promise<unknown>,
     metrics: NETWORK_METRICS,
     charts: NETWORK_CHARTS,
     layers: {
@@ -64,7 +64,7 @@ export const SECTION_REGISTRY: SectionConfig[] = [
     id: 'amenities',
     name: 'Amenities',
     description: '15-minute city categories and accessibility',
-    query: (bbox: BBox) => queryPlaces(bbox) as Promise<unknown>,
+    query: (bbox, wkt) => queryPlaces(bbox, wkt) as Promise<unknown>,
     metrics: AMENITY_METRICS,
     charts: AMENITY_CHARTS,
     layers: {

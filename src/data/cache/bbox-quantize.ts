@@ -1,4 +1,4 @@
-import type { BBox, LngLat } from '@/shared/types/geo';
+import type { BBox } from '@/shared/types/geo';
 import { OVERTURE_RELEASE } from '@/config/constants';
 
 const PRECISION = 0.005; // ~500m grid
@@ -10,16 +10,6 @@ export function quantizeBbox(bbox: BBox): BBox {
     south: Math.floor(bbox.south / PRECISION) * PRECISION,
     east: Math.ceil(bbox.east / PRECISION) * PRECISION,
     north: Math.ceil(bbox.north / PRECISION) * PRECISION,
-  };
-}
-
-/** Build a bbox from origin + radius in degrees (~0.015° ≈ 1.67km) */
-export function originToBbox(origin: LngLat, radiusDeg = 0.015): BBox {
-  return {
-    west: origin.lng - radiusDeg,
-    south: origin.lat - radiusDeg,
-    east: origin.lng + radiusDeg,
-    north: origin.lat + radiusDeg,
   };
 }
 

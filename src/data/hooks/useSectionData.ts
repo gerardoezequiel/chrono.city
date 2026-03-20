@@ -18,27 +18,41 @@ export function useSectionData<T>(
   bbox: BBox | null,
   /** If false, defer the query until the section becomes visible */
   enabled = true,
+  polygonWkt?: string,
 ): UseSectionDataReturn<T> {
   const [data, setData] = useState<T | null>(null);
   const [state, setState] = useState<DataState>('idle');
   const [error, setError] = useState<string | null>(null);
   const [queryMs, setQueryMs] = useState<number | null>(null);
   const abortRef = useRef(0);
+  const prevBboxRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!bbox || !enabled) {
+    if (!bbox) {
       setData(null);
       setState('idle');
       setError(null);
       setQueryMs(null);
+      prevBboxRef.current = null;
       return;
     }
 
-    // Skip query when disabled (section not yet scrolled to, or dragging)
-    if (!enabled) return;
-
     const config = getSectionConfig(sectionId);
     if (!config?.query) return;
+
+    const bboxKey = `${bbox.west},${bbox.south},${bbox.east},${bbox.north}`;
+
+    // Bbox changed → clear stale data for new location
+    if (prevBboxRef.current !== null && prevBboxRef.current !== bboxKey) {
+      setData(null);
+      setState('idle');
+      setError(null);
+      setQueryMs(null);
+    }
+    prevBboxRef.current = bboxKey;
+
+    // Disabled (section not scrolled to, or dragging) — preserve existing data, don't query
+    if (!enabled) return;
 
     const key = cacheKey(bbox, sectionId);
 
@@ -78,7 +92,7 @@ export function useSectionData<T>(
       // Layer 3: DuckDB query against S3
       const t0 = performance.now();
       try {
-        const result = await config.query!(bbox);
+        const result = await config.query!(bbox, polygonWkt);
         if (abortRef.current !== requestId) return;
 
         const ms = performance.now() - t0;
@@ -99,7 +113,7 @@ export function useSectionData<T>(
         console.error(`[${sectionId}] query failed:`, err);
       }
     })();
-  }, [sectionId, bbox, enabled]);
+  }, [sectionId, bbox, enabled, polygonWkt]);
 
   return { data, state, error, queryMs };
 }
